@@ -1,22 +1,15 @@
 // ignore_for_file: unused_field, use_build_context_synchronously, unnecessary_brace_in_string_interps, avoid_print, unused_element
 
-import 'dart:convert';
 
 import 'package:cloud_firestore/cloud_firestore.dart' show FirebaseFirestore;
-import 'package:dart_encrypter/dart_encrypter.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:grade_pro/core/utils/firebase_auth.dart';
 import 'package:grade_pro/features/patient_authentication/presentation/blocs/auth_bloc/cubit/auth_cubit.dart';
 import 'package:grade_pro/features/patient_authentication/presentation/blocs/auth_bloc/cubit/auth_state.dart';
-import 'package:grade_pro/features/patient_authentication/presentation/blocs/auth_bloc/link_users/link_users_cubit.dart';
-import 'package:grade_pro/features/patient_authentication/presentation/pages/call_screen.dart';
 import 'package:grade_pro/features/patient_authentication/presentation/pages/caregiver/caregiver_scanner_screen.dart';
 import 'package:grade_pro/features/patient_authentication/presentation/pages/patient/patient_qr_screen.dart';
-import 'package:grade_pro/features/patient_authentication/presentation/pages/patient/voice_patient_register_screen.dart';
-import 'package:grade_pro/login_patient.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 
 class UserAuthService {

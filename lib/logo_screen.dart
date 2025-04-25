@@ -5,8 +5,7 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:grade_pro/features/patient_authentication/presentation/pages/caregiver/caregiver_scanner_screen.dart';
-import 'package:grade_pro/features/patient_authentication/presentation/pages/patient/initial_patient.dart';
+import 'package:grade_pro/features/patient_authentication/presentation/pages/caregiver/caregiver_naigation_screen.dart';
 import 'package:grade_pro/features/patient_authentication/presentation/pages/patient/patient_navigation_screen.dart';
 import 'package:grade_pro/generated/l10n.dart';
 import 'package:grade_pro/features/patient_authentication/presentation/pages/user_screen.dart';
@@ -53,7 +52,7 @@ Future.delayed(Duration(seconds: 3),() {
         });
       } else if (role == 'caregiver') {
         setState(() {
-          _initialScreen = CaregiverScannerScreen(); // أو أي شاشة خاصة بالمرافق
+          _initialScreen = CaregiverNavigationScreen(); // أو أي شاشة خاصة بالمرافق
         });
       } 
     } else {
