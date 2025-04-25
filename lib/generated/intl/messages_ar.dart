@@ -26,10 +26,11 @@ class MessageLookup extends MessageLookupByLibrary {
     "text1": MessageLookupByLibrary.simpleMessage("أحمد"),
     "text2": MessageLookupByLibrary.simpleMessage("أحمد"),
     "text3": MessageLookupByLibrary.simpleMessage("!مرحبًا"),
-    "text4": MessageLookupByLibrary.simpleMessage("إلى فكر و اخطو"),
+    "text4": MessageLookupByLibrary.simpleMessage("إلى"),
     "text5": MessageLookupByLibrary.simpleMessage("اختر نوع المستخدم للبدء"),
     "text6": MessageLookupByLibrary.simpleMessage("مريض"),
     "text7": MessageLookupByLibrary.simpleMessage("مرشد رعاية"),
+    "text8": MessageLookupByLibrary.simpleMessage("فكر و اخطو"),
     "title": MessageLookupByLibrary.simpleMessage("فكر و اخطو"),
   };
 }

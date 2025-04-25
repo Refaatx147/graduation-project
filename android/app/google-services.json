@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "903839193858",
+    "project_id": "grade-pro-firebase",
+    "storage_bucket": "grade-pro-firebase.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:903839193858:android:081b0ead41ec94d2db001b",
+        "android_client_info": {
+          "package_name": "com.example.grade_pro"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDIqw_5joW4p-TN_tRKgvRPOuG_bLR4s4Y"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -32,6 +32,7 @@ class MessageLookup extends MessageLookupByLibrary {
     ),
     "text6": MessageLookupByLibrary.simpleMessage("Patient"),
     "text7": MessageLookupByLibrary.simpleMessage("Caregiver"),
+    "text8": MessageLookupByLibrary.simpleMessage("ThinkStep"),
     "title": MessageLookupByLibrary.simpleMessage("ThinkStep"),
   };
 }

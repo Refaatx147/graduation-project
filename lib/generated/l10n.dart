@@ -85,10 +85,12 @@ class S {
     return Intl.message('Welcome!', name: 'text3', desc: '', args: []);
   }
 
-  /// `to ThinkStep`
+  /// `to`
   String get text4 {
     return Intl.message('to', name: 'text4', desc: '', args: []);
   }
+
+  /// `ThinkStep`
   String get text8 {
     return Intl.message('ThinkStep', name: 'text8', desc: '', args: []);
   }
