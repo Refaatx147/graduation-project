@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:grade_pro/core/utils/user_auth_service.dart';
 import 'package:grade_pro/core/utils/voice_patient_helper.dart';
 import 'package:grade_pro/features/patient_authentication/presentation/pages/call_screen.dart';
@@ -40,7 +39,7 @@ class _VoiceNavigationPageState extends State<VoiceNavigationPage> {
 
 
 
-bool restartListeningRegister()
+bool restartListening()
   {
     if(_isListeningRegister !=true)
   {
@@ -83,9 +82,7 @@ bool restartListeningRegister()
   //   }
 
     result = await VoiceHelper().listen();
-  String res =   cleanCommand(result!);
-   _handleVoiceCommand(res);
-    // استمع للصوت ومرر النتيجة لفنكشن التنفيذ
+   _handleVoiceCommand(result!);
     
   });
 }
