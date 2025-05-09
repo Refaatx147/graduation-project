@@ -1,6 +1,5 @@
 // ignore_for_file: deprecated_member_use
 
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -8,7 +7,6 @@ import 'package:grade_pro/features/patient_authentication/presentation/blocs/aut
 import 'package:grade_pro/features/patient_authentication/presentation/blocs/auth_bloc/link_users/link_users_state.dart';
 import 'package:grade_pro/features/patient_authentication/presentation/pages/call_screen.dart';
 import 'package:qr_flutter/qr_flutter.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 
 class PatientQrScreen extends StatelessWidget {
   const PatientQrScreen({super.key});
