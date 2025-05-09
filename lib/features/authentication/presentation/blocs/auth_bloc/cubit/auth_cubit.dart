@@ -5,7 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:grade_pro/core/utils/firebase_auth.dart';
-import 'package:grade_pro/features/patient_authentication/presentation/blocs/auth_bloc/cubit/auth_state.dart';
+import 'package:grade_pro/features/authentication/presentation/blocs/auth_bloc/cubit/auth_state.dart';
 
 
 class AuthCubit extends Cubit<AuthState> {

@@ -3,8 +3,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:grade_pro/core/utils/user_auth_service.dart';
-import 'package:grade_pro/features/patient_authentication/presentation/pages/patient/patient_qr_screen.dart';
-import 'package:grade_pro/features/patient_authentication/presentation/pages/patient/patient_home_screen.dart';
 
 class PatientSelectionScreen extends StatefulWidget {
   const PatientSelectionScreen({super.key});

@@ -1,11 +1,12 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:grade_pro/core/utils/user_auth_service.dart';
 import 'package:grade_pro/core/utils/voice_patient_helper.dart';
-import 'package:grade_pro/features/patient_authentication/presentation/pages/call_screen.dart';
-import 'package:grade_pro/features/patient_authentication/presentation/pages/caregiver/map_caregiver.dart';
-import 'package:grade_pro/features/patient_authentication/presentation/pages/patient/patient_qr_screen.dart';
-import 'package:grade_pro/features/patient_authentication/presentation/pages/patient/patient_home_screen.dart';
+import 'package:grade_pro/features/authentication/presentation/pages/call_screen.dart';
+import 'package:grade_pro/features/authentication/presentation/pages/caregiver/map_caregiver.dart';
+import 'package:grade_pro/features/authentication/presentation/pages/patient/patient_qr_screen.dart';
+import 'package:grade_pro/features/authentication/presentation/pages/patient/patient_home_screen.dart';
 
 class VoiceNavigationPage extends StatefulWidget {
   final int initialPageIndex;
@@ -39,7 +40,7 @@ class _VoiceNavigationPageState extends State<VoiceNavigationPage> {
 
 
 
-bool restartListening()
+bool restartListeningRegister()
   {
     if(_isListeningRegister !=true)
   {
@@ -82,7 +83,9 @@ bool restartListening()
   //   }
 
     result = await VoiceHelper().listen();
-   _handleVoiceCommand(result!);
+  String res =   cleanCommand(result!);
+   _handleVoiceCommand(res);
+    // استمع للصوت ومرر النتيجة لفنكشن التنفيذ
     
   });
 }

@@ -3,9 +3,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:grade_pro/features/patient_authentication/presentation/blocs/auth_bloc/link_users/link_users_cubit.dart';
-import 'package:grade_pro/features/patient_authentication/presentation/blocs/auth_bloc/link_users/link_users_state.dart';
-import 'package:grade_pro/features/patient_authentication/presentation/pages/call_screen.dart';
+import 'package:grade_pro/features/authentication/presentation/blocs/auth_bloc/link_users/link_users_cubit.dart';
+import 'package:grade_pro/features/authentication/presentation/blocs/auth_bloc/link_users/link_users_state.dart';
+import 'package:grade_pro/features/authentication/presentation/pages/call_screen.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 class PatientQrScreen extends StatelessWidget {

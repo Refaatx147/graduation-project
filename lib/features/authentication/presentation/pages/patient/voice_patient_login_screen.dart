@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:grade_pro/core/utils/user_auth_service.dart';
 import 'package:grade_pro/generated/l10n.dart';
-import 'package:grade_pro/features/patient_authentication/presentation/pages/patient/patient_home_screen.dart';
+import 'package:grade_pro/features/authentication/presentation/pages/patient/patient_home_screen.dart';
 
 class VoicePatientLoginScreen extends StatefulWidget {
   const VoicePatientLoginScreen({super.key});

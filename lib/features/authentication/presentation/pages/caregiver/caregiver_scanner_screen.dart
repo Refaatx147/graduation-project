@@ -2,10 +2,10 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:grade_pro/features/patient_authentication/presentation/pages/call_screen.dart';
+import 'package:grade_pro/features/authentication/presentation/pages/call_screen.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
-import 'package:grade_pro/features/patient_authentication/presentation/blocs/auth_bloc/link_users/link_users_cubit.dart';
-import 'package:grade_pro/features/patient_authentication/presentation/blocs/auth_bloc/link_users/link_users_state.dart';
+import 'package:grade_pro/features/authentication/presentation/blocs/auth_bloc/link_users/link_users_cubit.dart';
+import 'package:grade_pro/features/authentication/presentation/blocs/auth_bloc/link_users/link_users_state.dart';
 
 class CaregiverScannerScreen extends StatefulWidget {
   const CaregiverScannerScreen({super.key});

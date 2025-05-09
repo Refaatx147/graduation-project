@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:grade_pro/features/patient_authentication/presentation/pages/call_screen.dart';
-import 'package:grade_pro/features/patient_authentication/presentation/pages/caregiver/caregiver_profile.dart';
-import 'package:grade_pro/features/patient_authentication/presentation/pages/caregiver/caregiver_scanner_screen.dart';
-import 'package:grade_pro/features/patient_authentication/presentation/pages/caregiver/map_caregiver.dart';
+import 'package:grade_pro/features/authentication/presentation/pages/call_screen.dart';
+import 'package:grade_pro/features/authentication/presentation/pages/caregiver/caregiver_profile.dart';
+import 'package:grade_pro/features/authentication/presentation/pages/caregiver/caregiver_scanner_screen.dart';
+import 'package:grade_pro/features/authentication/presentation/pages/caregiver/map_caregiver.dart';
 
 class CaregiverNavigationScreen extends StatefulWidget {
   @override

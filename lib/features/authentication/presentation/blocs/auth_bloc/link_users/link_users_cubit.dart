@@ -1,7 +1,7 @@
 import 'package:bloc/bloc.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:grade_pro/features/patient_authentication/presentation/blocs/auth_bloc/link_users/link_users_state.dart';
+import 'package:grade_pro/features/authentication/presentation/blocs/auth_bloc/link_users/link_users_state.dart';
 
 
 class PatientCubit extends Cubit<PatientState> {

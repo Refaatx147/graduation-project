@@ -5,8 +5,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:grade_pro/core/utils/firebase_auth.dart';
 import 'package:grade_pro/core/utils/user_auth_service.dart';
-import 'package:grade_pro/features/patient_authentication/presentation/blocs/auth_bloc/cubit/auth_cubit.dart';
-import 'package:grade_pro/features/patient_authentication/presentation/blocs/auth_bloc/cubit/auth_state.dart';
+import 'package:grade_pro/features/authentication/presentation/blocs/auth_bloc/cubit/auth_cubit.dart';
+import 'package:grade_pro/features/authentication/presentation/blocs/auth_bloc/cubit/auth_state.dart';
 
 class CaregiverScreenRegister extends StatefulWidget {
   const CaregiverScreenRegister({super.key});

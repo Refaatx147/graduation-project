@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:grade_pro/core/utils/voice_patient_helper.dart';
-import 'package:grade_pro/features/patient_authentication/presentation/pages/patient/patient_navigation_screen.dart';
+import 'package:grade_pro/features/authentication/presentation/pages/patient/patient_navigation_screen.dart';
 
 class SplashVoicePage extends StatefulWidget {
   @override
