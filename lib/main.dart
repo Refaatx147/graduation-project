@@ -2,7 +2,10 @@
 
 
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:grade_pro/core/utils/firebase_auth.dart';
+import 'package:grade_pro/features/authentication/presentation/blocs/auth_cubit/auth_cubit.dart';
 import 'package:grade_pro/features/authentication/presentation/pages/call_screen.dart';
 import 'package:grade_pro/features/authentication/presentation/pages/caregiver/caregiver_new_password.dart';
 import 'package:grade_pro/features/authentication/presentation/pages/caregiver/caregiver_profile.dart';
@@ -11,7 +14,8 @@ import 'package:grade_pro/features/authentication/presentation/pages/caregiver/c
 import 'package:grade_pro/features/authentication/presentation/pages/caregiver/caregiver_screen_login.dart';
 import 'package:grade_pro/features/authentication/presentation/pages/caregiver/caregiver_screen_register.dart';
 import 'package:grade_pro/features/authentication/presentation/pages/caregiver/caregiver_verification.dart';
-import 'package:grade_pro/features/authentication/presentation/pages/caregiver/map_caregiver.dart';
+import 'package:grade_pro/features/authentication/presentation/pages/caregiver/map_caregiver_screen.dart';
+import 'package:grade_pro/features/authentication/presentation/pages/patient/map_patient_screen.dart';
 import 'package:grade_pro/features/authentication/presentation/pages/patient/patient_qr_screen.dart';
 import 'package:grade_pro/features/authentication/presentation/pages/patient/voice_patient_login_screen.dart';
 import 'package:grade_pro/features/authentication/presentation/pages/patient/voice_patient_register_screen.dart';
@@ -20,6 +24,7 @@ import 'package:grade_pro/features/authentication/presentation/pages/user_screen
 import 'package:grade_pro/generated/l10n.dart';
 import 'package:grade_pro/login_patient.dart';
 import 'package:grade_pro/logo_screen.dart';
+import 'package:provider/provider.dart';
 import 'package:zego_uikit_prebuilt_call/zego_uikit_prebuilt_call.dart';
 import 'package:zego_uikit_signaling_plugin/zego_uikit_signaling_plugin.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -54,7 +59,21 @@ WidgetsFlutterBinding.ensureInitialized();
 await Firebase.initializeApp(
   options: DefaultFirebaseOptions.currentPlatform,
 );
-  runApp(MyApp(password: password,));
+  runApp(
+    MultiProvider(
+      providers: [
+        Provider<AuthService>(create: (_) => AuthService(),lazy: false,),
+        BlocProvider<AuthCubit>(
+          create: (context) => AuthCubit(
+            authService: context.read<AuthService>(),
+          ),
+        ),
+      ],
+      child: MyApp( 
+        password: password,
+      ),
+    ),
+  );
 }
 
 
@@ -91,9 +110,9 @@ class LanguageSwitcher extends StatefulWidget {
     '/caregiver-register':(context)=>CaregiverScreenRegister(),
     '/reset-pass':(context)=>CaregiverResetPasswordScreen(),
     '/caregiver-verification':(context)=>CaregiverVerificationScreen(),
-    '/caregiver-new-password':(context)=>CaregiverNewPassword(),
-    '/caregiver-confirmation':(context)=>CaregiverNewPassword(),
-    '/map':(context)=>MapScreen(),
+    '/caregiver-new-password':(context)=> CaregiverNewPassword(),
+    '/caregiver-map':(context)=>MapCaregiverScreen(patientId: '',),
+    '/patient-map':(context)=>MapPatientScreen(patientId: '',),
     '/caregiver-profile':(context)=>CaregiverProfileScreen(),
     '/patient-QrScreen':(context)=>PatientQrScreen(),
     '/caregiver-scanner':(context)=>CaregiverScannerScreen(),
@@ -149,7 +168,7 @@ class _LanguageSwitcherState extends State<LanguageSwitcher> {
         ),
         primarySwatch: Colors.blue,
       ),
-      home:  LogoPage(changeLanguage: _changeLanguage),
+      home:  LogoPage(changeLanguage: _changeLanguage,),
     );
   }
 }

@@ -34,8 +34,10 @@ class _PatientSelectionScreenState extends State<PatientSelectionScreen> {
 Future<void> _startVoiceFlow() async {
  
 
-    await _auth.speak("Welcome Patient! Please Say   Register or Login");
-    final choice = await _auth.listen();
+    await _auth.speak("Welcome Patient! Please Say Register or Login");
+    final choice = await  Future.delayed(Duration(seconds: 3)).then((value) {
+      return _auth.listen();
+    });
 
     if (choice == "register") {
       _isListeningUser=true;
@@ -44,8 +46,11 @@ Future<void> _startVoiceFlow() async {
       _isListeningUser=true;
       Navigator.pushReplacementNamed(context, '/patient-login');
     } 
+     Future.delayed(Duration(seconds: 2)).then((value) {
+
   restartListeningUser();
 
+});
 }
 
 

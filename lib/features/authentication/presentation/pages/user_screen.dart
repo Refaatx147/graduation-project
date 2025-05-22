@@ -55,7 +55,7 @@ class _UserPageState extends State<UserPage> {
 
 //       await _auth.stopListening();
 //     }
- Future.delayed(Duration(seconds: 1)).then((value) {
+ Future.delayed(Duration(seconds: 2)).then((value) {
     restartListening();
  });
     
@@ -123,7 +123,6 @@ class _UserPageState extends State<UserPage> {
                   style:GoogleFonts.readexPro(textStyle:  TextStyle(fontSize: 17, color: Color(0xff363D5F),shadows:[Shadow(color: Color(0xff363D5F),blurRadius:5,offset: Offset(0, 1) )]),
                 ),),
                 SizedBox(height: 80),
-Text('${RouteSettings().name}'),
             Container(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(

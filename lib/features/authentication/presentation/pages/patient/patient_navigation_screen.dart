@@ -1,147 +1,189 @@
-import 'dart:async';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:grade_pro/core/utils/user_auth_service.dart';
 import 'package:grade_pro/core/utils/voice_patient_helper.dart';
 import 'package:grade_pro/features/authentication/presentation/pages/call_screen.dart';
-import 'package:grade_pro/features/authentication/presentation/pages/caregiver/map_caregiver.dart';
+import 'package:grade_pro/features/authentication/presentation/pages/patient/map_patient_screen.dart';
 import 'package:grade_pro/features/authentication/presentation/pages/patient/patient_qr_screen.dart';
 import 'package:grade_pro/features/authentication/presentation/pages/patient/patient_home_screen.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:grade_pro/features/authentication/presentation/blocs/navigation_cubit/navigation_cubit.dart';
+import 'package:grade_pro/features/authentication/presentation/widgets/patient_navigation_bar.dart';
 
-class VoiceNavigationPage extends StatefulWidget {
-  final int initialPageIndex;
+class PatientNavigationScreen extends StatefulWidget {
+  final UserAuthService authService;
 
-  VoiceNavigationPage({required this.initialPageIndex});
+  const PatientNavigationScreen({
+    super.key,
+    required this.authService,
+  });
 
   @override
-  _VoiceNavigationPageState createState() => _VoiceNavigationPageState();
+  State<PatientNavigationScreen> createState() => _PatientNavigationScreenState();
 }
 
-class _VoiceNavigationPageState extends State<VoiceNavigationPage> {
+class _PatientNavigationScreenState extends State<PatientNavigationScreen> {
   final VoiceHelper _voiceHelper = VoiceHelper();
-   int _currentPageIndex=1;
-  late Timer _reminderTimer;
-   final bool  _isListeningRegister=false;
-
-
-  final List<Widget> _pages = [
-    PatientQrScreen(),
-    HomePatient(authService: UserAuthService()),
-        CallPage(isPatient: true),
-    MapScreen()
-  ];
+  OverlayEntry? _overlayEntry;
+  bool _isListening = false;
 
   @override
   void initState() {
     super.initState();
-    _startReminderTimer();
+    _startContinuousListening();
   }
 
-
-
-
-bool restartListeningRegister()
-  {
-    if(_isListeningRegister !=true)
-  {
-   _registerUser();
-  }
-  return true;
-  }
-
-  Future<void> _registerUser() async {
-  await VoiceHelper().speak("Please navigate to any page");
-
-  String? result;
-
-
-  // while (password == null || !_isValidPassword(password)) {
-  //   }
-
-    result = await VoiceHelper().listen();
-    print("Recognized  Input: $result");  // Debugging log
-
-
-}
-
-
-
-
-
-
-
-
-
-
-  void _startReminderTimer() {
-  _reminderTimer = Timer.periodic(Duration(seconds: 15), (_) async {
-    await _voiceHelper.speak("You can choose any page");
- String? result;
-
-
-  // while (password == null || !_isValidPassword(password)) {
-  //   }
-
-    result = await VoiceHelper().listen();
-  String res =   cleanCommand(result!);
-   _handleVoiceCommand(res);
-    // استمع للصوت ومرر النتيجة لفنكشن التنفيذ
-    
-  });
-}
-
-String cleanCommand(String command) {
-  return command.trim().toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
-}
-
-void  _handleVoiceCommand(String command) {
-  String cleaned = cleanCommand(command);
-  print("Cleaned command: $cleaned");
-
- if (cleaned=='qr') {
- setState(() {
-   _currentPageIndex=0;
-           print(_currentPageIndex);
-
- });}    
-    else if(cleaned== 'home')
-    {
-      setState(() => _currentPageIndex = 1);
-             print(_currentPageIndex);
-
-     
+  void _startContinuousListening() async {
+    if (!_isListening) {
+      setState(() => _isListening = true);
+      _listenForCommands();
     }
-    else if (cleaned== 'call')
-       {setState(() {
-         _currentPageIndex=2;
-                 print(_currentPageIndex);
+  }
 
-       });
-       }
-    else if (cleaned=='map')
-    {
-      setState(() {
-        _currentPageIndex=3;
-        print(_currentPageIndex);
-      });
+  void _listenForCommands() async {
+    while (_isListening) {
+      final command = await _voiceHelper.listen();
+      if (command != null && command.isNotEmpty) {
+        _processVoiceCommand(command);
+      }
     }
-     else {
- _voiceHelper.speak("Sorry, I didn't understand that.");
-     }  
- 
-  
-}
+  }
 
+  void _showNavigationFeedback(String message, bool isError) {
+    _overlayEntry?.remove();
+    _overlayEntry = OverlayEntry(
+      builder: (context) => Positioned(
+        top: MediaQuery.of(context).padding.top + 70,
+        left: 0,
+        right: 0,
+        child: Material(
+          color: Colors.transparent,
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 20),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            decoration: BoxDecoration(
+              color: isError ? Colors.red.shade100 : Colors.green.shade100,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: isError ? Colors.red.shade300 : Colors.green.shade300,
+                width: 1,
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  isError ? Icons.error_outline : Icons.check_circle_outline,
+                  color: isError ? Colors.red : Colors.green,
+                ),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    message,
+                    style: TextStyle(
+                      color: isError ? Colors.red.shade900 : Colors.green.shade900,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    Overlay.of(context).insert(_overlayEntry!);
+    Future.delayed(const Duration(seconds: 2), () {
+      _overlayEntry?.remove();
+      _overlayEntry = null;
+    });
+  }
+
+  void _processVoiceCommand(String command) {
+    final lowerCommand = command.toLowerCase();
+    int? targetIndex;
+    String? screenName;
+
+    if (lowerCommand.contains('home') || lowerCommand.contains('main')) {
+      targetIndex = 0;
+      screenName = 'Home';
+    } else if (lowerCommand.contains('qr') || lowerCommand.contains('scan') || lowerCommand.contains('code')) {
+      targetIndex = 1;
+      screenName = 'QR Code';
+    } else if (lowerCommand.contains('map') || lowerCommand.contains('location') || lowerCommand.contains('where')) {
+      targetIndex = 2;
+      screenName = 'Map';
+    } else if (lowerCommand.contains('call') || lowerCommand.contains('phone') || lowerCommand.contains('contact')) {
+      targetIndex = 3;
+      screenName = 'Call';
+    } else if (lowerCommand.contains('logout') || lowerCommand.contains('sign out')) {
+      _handleLogout();
+      return;
+    }
+
+    if (targetIndex != null && screenName != null) {
+      final currentIndex = context.read<NavigationCubit>().state.currentIndex;
+      if (currentIndex != targetIndex) {
+        context.read<NavigationCubit>().navigateToIndex(targetIndex);
+        _showNavigationFeedback('Navigating to $screenName', false);
+      }
+    } else {
+      _showNavigationFeedback('Command not recognized. Please try again.', true);
+    }
+  }
+
+  Future<void> _handleLogout() async {
+    try {
+      await FirebaseAuth.instance.signOut();
+      if (mounted) {
+        Navigator.of(context).pushNamedAndRemoveUntil(
+          '/user-select',
+          (route) => false,
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        _showNavigationFeedback('Error loggin Please try again.', true);
+      }
+    }
+  }
 
   @override
   void dispose() {
-    _reminderTimer.cancel();
+    _isListening = false;
+    _voiceHelper.stopListening();
+    _overlayEntry?.remove();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(body: _pages[_currentPageIndex]);
-  
+    return BlocBuilder<NavigationCubit, NavigationState>(
+      builder: (context, state) {
+        return Scaffold(
+          body: IndexedStack(
+            index: state.currentIndex,
+            children: [
+              HomePatient(authService: widget.authService),
+              const PatientQrScreen(),
+              MapPatientScreen(patientId: FirebaseAuth.instance.currentUser?.uid ?? ''),
+              const CallPage(isPatient: true),
+            ],
+          ),
+          bottomNavigationBar: PatientNavigationBar(
+            currentIndex: state.currentIndex,
+            onTap: (index) {
+              final currentIndex = state.currentIndex;
+              if (currentIndex != index) {
+                context.read<NavigationCubit>().navigateToIndex(index);
+                final screenNames = ['Home', 'QR Code', 'Map', 'Call'];
+                _showNavigationFeedback('Navigating to ${screenNames[index]}', false);
+              }
+            },
+          ),
+        );
+      },
+    );
   }
 }

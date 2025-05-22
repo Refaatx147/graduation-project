@@ -5,15 +5,17 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:grade_pro/features/authentication/presentation/pages/caregiver/caregiver_naigation_screen.dart';
+import 'package:grade_pro/core/utils/user_auth_service.dart';
+import 'package:grade_pro/features/authentication/presentation/pages/caregiver/caregiver_navigation_screen.dart';
 import 'package:grade_pro/features/authentication/presentation/pages/patient/patient_navigation_screen.dart';
 import 'package:grade_pro/generated/l10n.dart';
 import 'package:grade_pro/features/authentication/presentation/pages/user_screen.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:grade_pro/features/authentication/presentation/blocs/navigation_cubit/navigation_cubit.dart';
 
 class LogoPage extends StatefulWidget {
       final Function(Locale) changeLanguage;
-
-  const LogoPage({super.key, required this.changeLanguage});
+  const LogoPage({super.key, required this.changeLanguage,});
 
   @override
   State<LogoPage> createState() => _LogoPageState();
@@ -48,7 +50,12 @@ Future.delayed(Duration(seconds: 3),() {
 
       if (role == 'patient') {
         setState(() {
-          _initialScreen = VoiceNavigationPage(initialPageIndex: 0,);
+          _initialScreen = BlocProvider(
+            create: (context) => NavigationCubit(),
+            child: PatientNavigationScreen(
+              authService: UserAuthService(),
+            ),
+          );
         });
       } else if (role == 'caregiver') {
         setState(() {

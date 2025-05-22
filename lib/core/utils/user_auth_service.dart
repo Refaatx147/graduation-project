@@ -1,14 +1,14 @@
 // ignore_for_file: unused_field, use_build_context_synchronously, unnecessary_brace_in_string_interps, avoid_print, unused_element
 
-
-import 'package:cloud_firestore/cloud_firestore.dart' show FirebaseFirestore;
+import 'package:cloud_firestore/cloud_firestore.dart' show FieldValue, FirebaseFirestore, SetOptions;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:grade_pro/core/utils/firebase_auth.dart';
-import 'package:grade_pro/features/authentication/presentation/blocs/auth_bloc/cubit/auth_cubit.dart';
-import 'package:grade_pro/features/authentication/presentation/blocs/auth_bloc/cubit/auth_state.dart';
+import 'package:grade_pro/features/authentication/presentation/blocs/auth_cubit/auth_cubit.dart';
+import 'package:grade_pro/features/authentication/presentation/blocs/auth_cubit/auth_state.dart';
 import 'package:grade_pro/features/authentication/presentation/pages/caregiver/caregiver_scanner_screen.dart';
+import 'package:grade_pro/features/authentication/presentation/pages/patient/patient_navigation_screen.dart';
 import 'package:grade_pro/features/authentication/presentation/pages/patient/patient_qr_screen.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 
@@ -36,10 +36,10 @@ class UserAuthService {
 
     String recognizedWords = "";
 
-    Future.delayed(Duration(seconds: 3)).then((value) {
+    Future.delayed(Duration(seconds: 2)).then((value) {
       _speech.listen(
-        pauseFor: const Duration(seconds: 7),
-        listenFor: const Duration(seconds: 7),
+        pauseFor: const Duration(seconds: 9),
+        listenFor: const Duration(seconds: 9),
         onResult: (val) {
           if (val.recognizedWords.isNotEmpty) {
             recognizedWords = val.recognizedWords;
@@ -47,7 +47,7 @@ class UserAuthService {
         },
       );
     });
-    await Future.delayed(const Duration(seconds: 8));
+    await Future.delayed(const Duration(seconds: 7));
     return recognizedWords.toLowerCase().trim();
   }
 
@@ -59,39 +59,71 @@ class UserAuthService {
   }
 
   Future<void> registerPatient(String password, BuildContext context) async {
-    final encryptedPassword = 'z@#A${password}';
+    try {
+      final encryptedPassword = 'z@#A${password}';
 
-    await authCubit.signUpPatient(
-        email: _generateFirebaseEmail(encryptedPassword),
-        password: encryptedPassword);
-    if (authCubit.state is Authenticated) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Registration successful!'),
-          backgroundColor: Colors.green,
-        ),
-      );
-      speak("Registration successful. Navigating to login.");
+      await authCubit.signUpPatient(
+          email: _generateFirebaseEmail(encryptedPassword),
+          password: encryptedPassword);
 
-      Future.delayed(Duration(seconds: 3)).then(
-        (value) {
+      if (authCubit.state is Authenticated) {
+        // Generate a unique share token
+        final shareToken = DateTime.now().millisecondsSinceEpoch.toString() + 
+            (1000 + (DateTime.now().millisecond % 9000)).toString();
+
+        // Create user document with share token
+        await FirebaseFirestore.instance.collection('users').doc(currentUser?.uid).set({
+          'role': 'patient',
+          'email': _generateFirebaseEmail(encryptedPassword),
+          'shareToken': shareToken,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Registration successful!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        
+        await speak("Registration successful. Navigating to login.");
+        await Future.delayed(const Duration(seconds: 2));
+        
+        if (context.mounted) {
           Navigator.pushReplacementNamed(context, '/patient-login');
-        },
-      );
-    } else if (authCubit.state is Unauthenticated) {
+        }
+      } else if (authCubit.state is Unauthenticated) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            duration: const Duration(seconds: 2),
+            content: Text(
+                'Registration failed: ${(authCubit.state as Unauthenticated).errorMessage}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        
+        await speak("Registration failed. Please try again.");
+        await Future.delayed(const Duration(seconds: 2));
+        
+        if (context.mounted) {
+          Navigator.pushReplacementNamed(context, '/patient-register');
+        }
+      }
+    } catch (e) {
+      print('Error in registerPatient: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          duration: Duration(seconds: 2),
-          content: Text(
-              'register failed: ${(authCubit.state as Unauthenticated).errorMessage}'),
+          content: Text('Registration failed: ${e.toString()}'),
           backgroundColor: Colors.red,
         ),
       );
-      Future.delayed(Duration(seconds: 2)).then(
-        (value) {
-          Navigator.pushReplacementNamed(context, '/patient-register');
-        },
-      ); //  await speak(" failed.please try again.");
+      
+      await speak("Registration failed. Please try again.");
+      await Future.delayed(const Duration(seconds: 2));
+      
+      if (context.mounted) {
+        Navigator.pushReplacementNamed(context, '/patient-register');
+      }
     }
   }
 
@@ -116,7 +148,7 @@ class UserAuthService {
       Future.delayed(Duration(seconds: 1)).then(
         (value) {
 Navigator.of(context).push(MaterialPageRoute(builder: (context) {
-  return PatientQrScreen()
+  return PatientNavigationScreen(authService: UserAuthService(),)
 ;},));  },
       );
     } else if (authCubit.state is Unauthenticated) {
@@ -138,32 +170,83 @@ Navigator.of(context).push(MaterialPageRoute(builder: (context) {
   }
 
 
-  Future<void> registerCaregiver(
-      String email, String password, BuildContext context, String name) async {
-    await authCubit.signUpCaregiver(
-        email: email, password: password, name: name);
-    if (authCubit.state is Authenticated) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          duration: Duration(seconds: 2),
-          content: Text('Registration successful!'),
-          backgroundColor: Colors.green,
-        ),
+  Future<void> registerCaregiver(String email, String password, BuildContext context, String name, String patientName) async {
+    try {
+      // First create the user in Firebase Auth
+      final userCredential = await firebaseAuth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
       );
-      Future.delayed(Duration(seconds: 2)).then(
-        (value) {
-          Navigator.pushReplacementNamed(context, '/caregiver-login');
-        },
-      );
-    } else if (authCubit.state is Unauthenticated) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          duration: Duration(seconds: 2),
-          content: Text(
-              'Login failed: ${(authCubit.state as Unauthenticated).errorMessage}'),
-          backgroundColor: Colors.red,
-        ),
-      );
+
+      if (userCredential.user != null) {
+        try {
+          // Create the user document in Firestore with the same ID as the auth user
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(userCredential.user!.uid)
+              .set({
+            'name': name,
+            'email': email,
+            'role': 'caregiver',
+            'patientName': patientName,
+            'linkedPatient': null,
+            'createdAt': FieldValue.serverTimestamp(),
+          });
+
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                duration: Duration(seconds: 2),
+                content: Text('Registration successful!'),
+                backgroundColor: Colors.green,
+              ),
+            );
+            
+            await Future.delayed(const Duration(seconds: 2));
+            if (context.mounted) {
+              Navigator.pushReplacementNamed(context, '/caregiver-login');
+            }
+          }
+        } catch (firestoreError) {
+          // If Firestore document creation fails, delete the auth user
+          await userCredential.user?.delete();
+          throw firestoreError;
+        }
+      }
+    } on FirebaseAuthException catch (e) {
+      String errorMessage = 'Registration failed';
+      
+      switch (e.code) {
+        case 'email-already-in-use':
+          errorMessage = 'This email is already registered';
+          break;
+        case 'invalid-email':
+          errorMessage = 'Invalid email address';
+          break;
+        case 'weak-password':
+          errorMessage = 'Password is too weak';
+          break;
+        default:
+          errorMessage = e.message ?? 'Registration failed';
+      }
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Registration failed: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -175,7 +258,7 @@ Navigator.of(context).push(MaterialPageRoute(builder: (context) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           duration: Duration(seconds: 2),
-          content: Text('Registration successful!'),
+          content: Text('Login successful!'),
           backgroundColor: Colors.green,
         ),
       );
@@ -235,16 +318,7 @@ Navigator.of(context).push(MaterialPageRoute(builder: (context) {
   }
 }
 
-  // Future<bool> verifyPassword(String password) async {
-  //   final encryptedPassword = 'z@#A${password}';
-  //   final response = await _supabase.auth.signInWithPassword(
-  //     email: _generateFirebaseEmail(password),
-  //     password: encryptedPassword,
-  //   );
-
-  //   return response.user != null;
-  // }
-
+ 
 
 
 

@@ -4,11 +4,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:grade_pro/features/authentication/presentation/pages/call_screen.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
-import 'package:grade_pro/features/authentication/presentation/blocs/auth_bloc/link_users/link_users_cubit.dart';
-import 'package:grade_pro/features/authentication/presentation/blocs/auth_bloc/link_users/link_users_state.dart';
+import 'package:grade_pro/features/authentication/presentation/blocs/link_users/link_users_cubit.dart';
+import 'package:grade_pro/features/authentication/presentation/blocs/link_users/link_users_state.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:grade_pro/features/authentication/presentation/pages/caregiver/caregiver_navigation_screen.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class CaregiverScannerScreen extends StatefulWidget {
-  const CaregiverScannerScreen({super.key});
+  final bool isInNavigation;
+  
+  const CaregiverScannerScreen({
+    super.key, 
+    this.isInNavigation = false,
+  });
 
   @override
   State<CaregiverScannerScreen> createState() => _CaregiverScannerScreenState();
@@ -16,34 +24,78 @@ class CaregiverScannerScreen extends StatefulWidget {
 
 class _CaregiverScannerScreenState extends State<CaregiverScannerScreen> {
   bool initialCheckDone = false;
+  String? linkedPatientName;
 
   @override
   void initState() {
     super.initState();
+    if (!widget.isInNavigation) {
     checkIfAlreadyLinked();
+    } else {
+      checkLinkedPatient();
+    }
   }
 
-  void checkIfAlreadyLinked() async {
+  Future<void> checkLinkedPatient() async {
+    final cubit = CaregiverCubit();
+    final linkedPatient = await cubit.checkIfCaregiverLinked();
+    
+    if (linkedPatient != null) {
+      // Get patient name from Firestore
+      final patientData = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(linkedPatient)
+          .get();
+      
+      setState(() {
+        linkedPatientName = patientData.data()?['name'] ?? 'Unknown Patient';
+        initialCheckDone = true;
+      });
+    } else {
+      setState(() {
+        initialCheckDone = true;
+      });
+    }
+  }
+
+  Future<void> checkIfAlreadyLinked() async {
     final cubit = CaregiverCubit();
     final alreadyLinked = await cubit.checkIfCaregiverLinked();
 
     if (alreadyLinked != null) {
-      // مربوطة بالفعل
+      // Show snackbar with theme styling
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('You are already linked to a patient!'),
-          backgroundColor: Colors.blueAccent,
+        SnackBar(
+          content: Text(
+            'You are already linked to a patient!',
+            style: GoogleFonts.poppins(
+              textStyle: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          backgroundColor: const Color(0xff0D343F),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          margin: const EdgeInsets.all(10),
+          duration: const Duration(seconds: 2),
         ),
       );
 
       await Future.delayed(const Duration(seconds: 2));
 
+      // Navigate to navigation screen
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => const CallPage(isPatient: false)),
+        MaterialPageRoute(
+          builder: (_) => CaregiverNavigationScreen(),
+        ),
       );
     } else {
-      // غير مربوط → لازم نسكان
+      // If not linked, stay on scanner screen
       setState(() {
         initialCheckDone = true;
       });
@@ -55,9 +107,81 @@ class _CaregiverScannerScreenState extends State<CaregiverScannerScreen> {
     return BlocProvider(
       create: (_) => CaregiverCubit(),
       child: Scaffold(
-        appBar: AppBar(title: const Text('Scan Patient QR Code')),
+        appBar: widget.isInNavigation ? null : AppBar(
+          backgroundColor: Color(0xff0D343F),
+          title: Text(
+            'Scan Patient QR Code',
+            style: GoogleFonts.poppins(
+              textStyle: TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ),
         body: initialCheckDone
-            ? BlocConsumer<CaregiverCubit, CaregiverState>(
+            ? (widget.isInNavigation && linkedPatientName != null
+                ? Center(
+                    child: Container(
+                      margin: const EdgeInsets.all(20),
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(15),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 10,
+                            offset: const Offset(0, 5),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.check_circle,
+                            color: Color(0xff0D343F),
+                            size: 60,
+                          ),
+                          const SizedBox(height: 20),
+                          Text(
+                            'Already Linked',
+                            style: GoogleFonts.poppins(
+                              textStyle: TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xff0D343F),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          Text(
+                            'You are linked to:',
+                            style: GoogleFonts.poppins(
+                              textStyle: TextStyle(
+                                fontSize: 16,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 5),
+                          Text(
+                            linkedPatientName!,
+                            style: GoogleFonts.poppins(
+                              textStyle: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xff0D343F),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                : BlocConsumer<CaregiverCubit, CaregiverState>(
                 listener: (context, state) {
                   if (state is CaregiverLinked) {
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -67,12 +191,14 @@ class _CaregiverScannerScreenState extends State<CaregiverScannerScreen> {
                       ),
                     );
 
+                        if (widget.isInNavigation) {
                     Navigator.pushReplacement(
                       context,
                       MaterialPageRoute(
-                          builder: (context) =>
-                              const CallPage(isPatient: false)),
+                              builder: (context) => CaregiverNavigationScreen(),
+                            ),
                     );
+                        }
                   } else if (state is CaregiverError) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
@@ -102,12 +228,12 @@ class _CaregiverScannerScreenState extends State<CaregiverScannerScreen> {
                             .linkCaregiverToPatient(code);
                       }
                     },
-                    errorBuilder: (context, error, child) {
+                    errorBuilder: (context, error) {
                       return Center(child: Text('Camera Error: $error'));
                     },
                   );
                 },
-              )
+                  ))
             : const Center(child: CircularProgressIndicator()),
       ),
     );

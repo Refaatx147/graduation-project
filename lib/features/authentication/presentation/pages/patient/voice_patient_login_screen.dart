@@ -1,12 +1,9 @@
 // ignore_for_file: use_build_context_synchronously, avoid_print
 
 import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:grade_pro/core/utils/user_auth_service.dart';
-import 'package:grade_pro/generated/l10n.dart';
-import 'package:grade_pro/features/authentication/presentation/pages/patient/patient_home_screen.dart';
 
 class VoicePatientLoginScreen extends StatefulWidget {
   const VoicePatientLoginScreen({super.key});
@@ -43,7 +40,9 @@ Future<void> _startLogin() async {
   String? password;
 
 
-    password = await _auth.listen();
+    password = await Future.delayed(Duration(seconds: 3)).then((value) {
+      return _auth.listen();
+    });
     print("Recognized Password Input: $password"); // Debugging log
 
     if (!await _auth.isValidPassword(password)) {

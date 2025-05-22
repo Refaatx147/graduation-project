@@ -3,8 +3,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:grade_pro/core/utils/firebase_auth.dart';
-import 'package:grade_pro/features/authentication/presentation/blocs/auth_bloc/cubit/auth_cubit.dart';
-import 'package:grade_pro/features/authentication/presentation/blocs/auth_bloc/cubit/auth_state.dart';
+import 'package:grade_pro/features/authentication/presentation/blocs/auth_cubit/auth_cubit.dart';
+import 'package:grade_pro/features/authentication/presentation/blocs/auth_cubit/auth_state.dart';
 
 
 class HomeScreen extends StatelessWidget {

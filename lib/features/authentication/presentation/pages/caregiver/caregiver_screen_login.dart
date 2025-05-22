@@ -3,10 +3,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:grade_pro/core/utils/firebase_auth.dart';
 import 'package:grade_pro/core/utils/user_auth_service.dart';
-import 'package:grade_pro/features/authentication/presentation/blocs/auth_bloc/cubit/auth_cubit.dart';
-import 'package:grade_pro/features/authentication/presentation/blocs/auth_bloc/cubit/auth_state.dart';
+import 'package:grade_pro/features/authentication/presentation/blocs/auth_cubit/auth_cubit.dart';
+import 'package:grade_pro/features/authentication/presentation/blocs/auth_cubit/auth_state.dart';
 
 class CaregiverScreenLogin extends StatefulWidget {
   const CaregiverScreenLogin({super.key});
@@ -19,6 +18,7 @@ class _CaregiverScreenLoginState extends State<CaregiverScreenLogin> {
   final _email = TextEditingController();
   final _password = TextEditingController();
   final UserAuthService _auth = UserAuthService();
+  bool _obscurePassword = true;
 
   Future<void> loginCaregiver() async {
     if (_email.text.isEmpty || _password.text.isEmpty) {
@@ -39,9 +39,7 @@ class _CaregiverScreenLoginState extends State<CaregiverScreenLogin> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (context) => AuthCubit(authService: AuthService(),),
-      child: Scaffold(
+    return Scaffold(
         resizeToAvoidBottomInset: false,
         backgroundColor: const Color(0xffFFF9ED),
         body: Padding(
@@ -83,7 +81,7 @@ class _CaregiverScreenLoginState extends State<CaregiverScreenLogin> {
               ),
               const SizedBox(height: 10),
               Text(
-                'Monitor Your Person’s State',
+                'Monitor Your Person\'s State',
                 style: GoogleFonts.poppins(
                   textStyle: const TextStyle(
                     fontSize: 19,
@@ -96,9 +94,25 @@ class _CaregiverScreenLoginState extends State<CaregiverScreenLogin> {
 
               // Email Input Field
               TextField(
+                
                 controller: _email,
                 decoration: InputDecoration(
+                  hintText: 'Enter your email',
+                  hintStyle: GoogleFonts.poppins(
+                    textStyle: const TextStyle(
+                      fontSize: 15,
+                      color: Colors.black,
+                      fontWeight: FontWeight.w400,
+                    ),
+                  ),
                   labelText: 'Email Address',
+                  labelStyle: GoogleFonts.poppins(
+                    textStyle: const TextStyle(
+                      fontSize: 16,
+                      color: Colors.black,
+                      fontWeight: FontWeight.w400,
+                    ),
+                  ),
                   suffixIcon: const Padding(
                     padding: EdgeInsets.only(right: 15.0),
                     child: Icon(Icons.email, color: Colors.black, size: 27),
@@ -108,7 +122,7 @@ class _CaregiverScreenLoginState extends State<CaregiverScreenLogin> {
                     borderRadius: BorderRadius.circular(30),
                   ),
                   filled: true,
-                  fillColor: const Color(0xFFDAE3E5),
+                  fillColor: const Color.fromARGB(255, 227, 229, 228),
                 ),
               ),
               const SizedBox(height: 50),
@@ -116,20 +130,49 @@ class _CaregiverScreenLoginState extends State<CaregiverScreenLogin> {
               // Password Input Field
               TextField(
                 controller: _password,
-                obscureText: true,
+                obscureText: _obscurePassword,
                 decoration: InputDecoration(
+                  hintText: 'Enter your password',
+                  hintStyle: GoogleFonts.poppins(
+                    textStyle: const TextStyle(
+                      fontSize: 15,
+                      color: Colors.black,
+                      fontWeight: FontWeight.w400,
+                    ),
+                  ),
                   labelText: 'Password',
-                  suffixIcon: const Padding(
-                    padding: EdgeInsets.only(right: 15.0),
-                    child: Icon(Icons.visibility_off,
-                        color: Colors.black, size: 27),
+                  labelStyle: GoogleFonts.poppins(
+                    textStyle: const TextStyle(
+                      fontSize: 16,
+                      color: Colors.black,
+                      fontWeight: FontWeight.w400,
+                    ),
+                  ),
+                  suffixIcon: Padding(
+                    padding: const EdgeInsets.only(right: 8.0),
+                    child: IconButton(
+                      icon: Icon(
+                        _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                        color: Colors.black,
+                        size: 27,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          _obscurePassword = !_obscurePassword;
+                        });
+                      },
+                      splashColor: Colors.transparent,
+                      highlightColor: Colors.transparent,
+                      hoverColor: Colors.transparent,
+                      focusColor: Colors.transparent,
+                    ),
                   ),
                   border: OutlineInputBorder(
                     borderSide: BorderSide.none,
                     borderRadius: BorderRadius.circular(30),
                   ),
                   filled: true,
-                  fillColor: const Color(0xFFDAE3E5),
+                  fillColor: const Color.fromARGB(255, 227, 229, 228),
                 ),
               ),
               const SizedBox(height: 60),
@@ -190,6 +233,12 @@ class _CaregiverScreenLoginState extends State<CaregiverScreenLogin> {
                   Padding(
                     padding: const EdgeInsets.only(right: 10.0),
                     child: TextButton(
+                      style: ButtonStyle(
+                        backgroundColor: WidgetStateProperty.all(Colors.transparent),
+                        shadowColor: WidgetStateProperty.all(Colors.transparent),
+                        foregroundColor: WidgetStateProperty.all(Colors.black.withAlpha(150)),
+                        overlayColor: WidgetStateProperty.all(Colors.transparent),
+                      ),
                       onPressed: () =>
                           Navigator.pushNamed(context, '/reset-pass'),
                       child: Text(
@@ -236,7 +285,7 @@ class _CaregiverScreenLoginState extends State<CaregiverScreenLogin> {
             ],
           ),
         ),
-      ),
+    
     );
   }
 }

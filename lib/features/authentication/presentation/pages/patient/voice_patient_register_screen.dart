@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:grade_pro/core/utils/firebase_auth.dart';
 import 'package:grade_pro/core/utils/user_auth_service.dart';
-import 'package:grade_pro/features/authentication/presentation/blocs/auth_bloc/cubit/auth_cubit.dart';
+import 'package:grade_pro/features/authentication/presentation/blocs/auth_cubit/auth_cubit.dart';
 
 class VoicePatientRegisterScreen extends StatefulWidget {
   const VoicePatientRegisterScreen({super.key});
@@ -36,29 +36,45 @@ bool restartListeningRegister()
   }
 
   Future<void> _registerUser() async {
-  setState(() => _isProcessing = true);
-  await _auth.speak("Please say your 4-digit password");
+    setState(() => _isProcessing = true);
+    try {
+      await _auth.speak("Please say your 4-digit password");
 
-  String? password;
+      String? password = await _auth.listen();
+      print("Recognized Password Input: $password");  // Debugging log
 
+      if (!await _auth.isValidPassword(password)) {
+        await _auth.speak("Invalid password. Please try again.");
+        setState(() => _isProcessing = false);
+        // Retry after a short delay
+        await Future.delayed(const Duration(seconds: 4));
+        if (mounted) {
+          _registerUser(); // Retry registration
+        }
+        return;
+      }
 
-  // while (password == null || !_isValidPassword(password)) {
-  //   }
-
-    password = await _auth.listen();
-    print("Recognized Password Input: $password");  // Debugging log
-
-    if (!await _auth.isValidPassword(password)) {
-      await _auth.speak("Invalid password.");
-    restartListeningRegister();
-
+      await _auth.registerPatient(password!, context);
+    } catch (e) {
+      print('Error in _registerUser: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Registration failed: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      await _auth.speak("Registration failed. Please try again.");
+      // Retry after error
+      await Future.delayed(const Duration(seconds: 2));
+      if (mounted) {
+        _registerUser(); // Retry registration
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isProcessing = false);
+      }
     }
-else {
-  await _auth.registerPatient(password!,context);
-
-
-}
-}
+  }
 
  
   @override
