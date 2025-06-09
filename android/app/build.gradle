@@ -29,18 +29,24 @@ if (flutterVersionName == null) {
 }
 
 android {
-    namespace "com.example.grade_pro"
+    namespace 'com.example.grade_pro'
     compileSdkVersion 35
     ndkVersion flutter.ndkVersion
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
+        coreLibraryDesugaringEnabled true
     }
 
     kotlinOptions {
         jvmTarget = '17'
-        freeCompilerArgs += ['-Xlint:-options']
+    }
+
+    lintOptions {
+        disable 'InvalidPackage'
+        checkReleaseBuilds false
+        abortOnError false
     }
 
     sourceSets {
@@ -80,9 +86,13 @@ android {
 
 dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
-    implementation platform('com.google.firebase:firebase-bom:32.7.0')
+    implementation platform('com.google.firebase:firebase-bom:32.7.2')
     implementation 'com.google.firebase:firebase-analytics'
+    implementation 'com.google.firebase:firebase-messaging'
     implementation 'androidx.multidex:multidex:2.0.1'
     implementation 'androidx.core:core:1.12.0'
     implementation 'androidx.core:core-ktx:1.12.0'
-} 
+    implementation 'androidx.work:work-runtime-ktx:2.9.0'
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.4'
+
+}

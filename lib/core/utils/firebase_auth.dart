@@ -43,9 +43,6 @@ Future<User?> signUpPatient({required String email,required String password}) as
       return null;
     }
   }
-
-
-
  Future<User?> signUpCaregiver({required String email,required String password,required String name}) async {
     try {
       UserCredential credential = await firebaseAuth.createUserWithEmailAndPassword(

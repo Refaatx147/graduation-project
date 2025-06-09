@@ -1,163 +1,146 @@
-// ignore_for_file: unused_element, non_constant_identifier_names, use_build_context_synchronously, must_be_immutable, no_leading_underscores_for_local_identifiers, unrelated_type_equality_checks
-
+// ignore_for_file: unused_element, non_constant_identifier_names, use_build_context_synchronously, must_be_immutable, no_leading_underscores_for_local_identifiers, unrelated_type_equality_checks, avoid_print, depend_on_referenced_packages, unnecessary_import
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:grade_pro/core/services/push_notifications.dart';
 import 'package:grade_pro/core/utils/firebase_auth.dart';
-import 'package:grade_pro/features/authentication/presentation/blocs/auth_cubit/auth_cubit.dart';
-import 'package:grade_pro/features/authentication/presentation/pages/call_screen.dart';
-import 'package:grade_pro/features/authentication/presentation/pages/caregiver/caregiver_new_password.dart';
-import 'package:grade_pro/features/authentication/presentation/pages/caregiver/caregiver_profile.dart';
-import 'package:grade_pro/features/authentication/presentation/pages/caregiver/caregiver_reset_password.dart';
-import 'package:grade_pro/features/authentication/presentation/pages/caregiver/caregiver_scanner_screen.dart';
-import 'package:grade_pro/features/authentication/presentation/pages/caregiver/caregiver_screen_login.dart';
-import 'package:grade_pro/features/authentication/presentation/pages/caregiver/caregiver_screen_register.dart';
-import 'package:grade_pro/features/authentication/presentation/pages/caregiver/caregiver_verification.dart';
-import 'package:grade_pro/features/authentication/presentation/pages/caregiver/map_caregiver_screen.dart';
-import 'package:grade_pro/features/authentication/presentation/pages/patient/map_patient_screen.dart';
-import 'package:grade_pro/features/authentication/presentation/pages/patient/patient_qr_screen.dart';
-import 'package:grade_pro/features/authentication/presentation/pages/patient/voice_patient_login_screen.dart';
-import 'package:grade_pro/features/authentication/presentation/pages/patient/voice_patient_register_screen.dart';
-import 'package:grade_pro/features/authentication/presentation/pages/patient/voice_patient_selection_screen.dart';
-import 'package:grade_pro/features/authentication/presentation/pages/user_screen.dart';
+import 'package:grade_pro/features/blocs/auth_cubit/auth_cubit.dart';
+import 'package:grade_pro/features/blocs/navigation_cubit/navigation_cubit.dart';
+import 'package:grade_pro/features/pages/caregiver/caregiver_new_password.dart';
+import 'package:grade_pro/features/pages/caregiver/caregiver_profile.dart';
+import 'package:grade_pro/features/pages/caregiver/caregiver_reset_password.dart';
+import 'package:grade_pro/features/pages/caregiver/caregiver_scanner_screen.dart';
+import 'package:grade_pro/features/pages/caregiver/caregiver_screen_login.dart';
+import 'package:grade_pro/features/pages/caregiver/caregiver_screen_register.dart';
+import 'package:grade_pro/features/pages/caregiver/caregiver_settings_screen.dart';
+import 'package:grade_pro/features/pages/caregiver/caregiver_verification.dart';
+import 'package:grade_pro/features/pages/caregiver/map_caregiver_screen.dart';
+import 'package:grade_pro/features/pages/patient/map_patient_screen.dart';
+import 'package:grade_pro/features/pages/patient/call_feature/patient_call_screen.dart';
+import 'package:grade_pro/features/pages/patient/patient_qr_screen.dart';
+import 'package:grade_pro/features/pages/patient/voice_patient_login_screen.dart';
+import 'package:grade_pro/features/pages/patient/voice_patient_register_screen.dart';
+import 'package:grade_pro/features/pages/patient/voice_patient_selection_screen.dart';
+import 'package:grade_pro/features/pages/user_screen.dart';
+import 'package:grade_pro/features/headset_connection/connected_headset.dart';
+import 'package:grade_pro/features/headset_connection/test_screen.dart';
 import 'package:grade_pro/generated/l10n.dart';
-import 'package:grade_pro/login_patient.dart';
 import 'package:grade_pro/logo_screen.dart';
 import 'package:provider/provider.dart';
-import 'package:zego_uikit_prebuilt_call/zego_uikit_prebuilt_call.dart';
-import 'package:zego_uikit_signaling_plugin/zego_uikit_signaling_plugin.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
+import 'package:grade_pro/core/services/cloudinary_service.dart';
+import 'package:permission_handler/permission_handler.dart';
+
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 Future<void> main() async {
 
-WidgetsFlutterBinding.ensureInitialized();
-
-  /// 1.1.2: set navigator key to ZegoUIKitPrebuiltCallInvitationService
-  ZegoUIKitPrebuiltCallInvitationService().setNavigatorKey(navigatorKey);
-
-  // call the useSystemCallingUI
-  ZegoUIKit().initLog().then((value) {
-    ZegoUIKitPrebuiltCallInvitationService().useSystemCallingUI(
-      [ZegoUIKitSignalingPlugin()],
-    );
-  });
-
-
+  try {
+    WidgetsFlutterBinding.ensureInitialized();
     
-// await ZIMKit().init(appID: 1417893468,appSign: '24422e49f6e8d6e106f5d840f96b247dee62e5832d54d462e568075c4ef4b3e4');
-  
- late  String password;
-  WidgetsFlutterBinding.ensureInitialized();
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  await PushNotifications.initialize();
 
 
-  password = 'default_password'; // Initialize password with a default value
+    await CloudinaryService().initialize();
+    
+     
+  }
+  catch (e, stackTrace) {
+    print('Error initializing Firebase or Cloudinary: $e');
+    print('Stack trace: $stackTrace');
+    rethrow;
+  }
+Future<void> requestOverlayPermission() async {
+  if (Platform.isAndroid) {
+    
+    final status = await Permission.systemAlertWindow.status;
+    if (!status.isGranted) {
+      await Permission.systemAlertWindow.request();
+      // Open settings if not granted
+      if (!await Permission.systemAlertWindow.isGranted) {
+        await openAppSettings();
+      }
+    }
+  }
 
-  WidgetsFlutterBinding.ensureInitialized();
-await Firebase.initializeApp(
-  options: DefaultFirebaseOptions.currentPlatform,
-);
-  runApp(
-    MultiProvider(
-      providers: [
-        Provider<AuthService>(create: (_) => AuthService(),lazy: false,),
-        BlocProvider<AuthCubit>(
-          create: (context) => AuthCubit(
-            authService: context.read<AuthService>(),
-          ),
-        ),
-      ],
-      child: MyApp( 
-        password: password,
-      ),
-    ),
-  );
 }
+
+   runApp(
+      MultiProvider(
+        providers: [
+          Provider<AuthService>(
+            create: (_) => AuthService(),
+            lazy: false,
+          ),
+          BlocProvider<AuthCubit>(
+            create: (context) => AuthCubit(
+              authService: context.read<AuthService>(),
+            ),
+          ),
+        
+           BlocProvider(
+            create: (context) => NavigationCubit(),
+          ),
+        ],
+        child: const MyApp(),
+      ),
+    );
+  
+}
+
+
 
 
 
 
 class MyApp extends StatelessWidget {
-
-  final String password;
-  // ignore: unused_field
- 
- const  MyApp({super.key,required this.password,});
-
-  @override
-  Widget build(BuildContext context) {
-
-return LanguageSwitcher(password: password,);  }
-    
-  }
-
-
-
-class LanguageSwitcher extends StatefulWidget {
-  final String password;
-   final Map<String, WidgetBuilder> _routes = {
-
-    // ignore: avoid_types_as_parameter_names
-    '/logo': (context) => LogoPage(changeLanguage:(p0) {
-    },),
-    '/dashboard': (context) => HomeScreen(),
-        '/patient-login': (context) => VoicePatientLoginScreen(),
-        '/patient-register': (context) => VoicePatientRegisterScreen(),
-'/patient-select':(context)=>PatientSelectionScreen(),
-    '/caregiver-login': (context) => CaregiverScreenLogin(),
-    '/caregiver-register':(context)=>CaregiverScreenRegister(),
-    '/reset-pass':(context)=>CaregiverResetPasswordScreen(),
-    '/caregiver-verification':(context)=>CaregiverVerificationScreen(),
-    '/caregiver-new-password':(context)=> CaregiverNewPassword(),
-    '/caregiver-map':(context)=>MapCaregiverScreen(patientId: '',),
-    '/patient-map':(context)=>MapPatientScreen(patientId: '',),
-    '/caregiver-profile':(context)=>CaregiverProfileScreen(),
-    '/patient-QrScreen':(context)=>PatientQrScreen(),
-    '/caregiver-scanner':(context)=>CaregiverScannerScreen(),
-    '/user-select':(context)=>UserPage(changeLanguage: (p0) {
-    },),
-    '/call-screen':(context)=>CallPage(isPatient: false),
-  };
-   LanguageSwitcher( {super.key,required this.password});
-
-  @override
-  State<LanguageSwitcher> createState() => _LanguageSwitcherState();
-}
-
-class _LanguageSwitcherState extends State<LanguageSwitcher> {
-  Locale currentLocale = Locale('en');
-
-  @override
-  void initState() {
-    super.initState();
-  }
-
-  void _changeLanguage(Locale newLocale) {
-    setState(() {
-      currentLocale = newLocale;
-    });
-  }
-
- 
+  
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      navigatorKey: navigatorKey,
-      locale: currentLocale,
-      localizationsDelegates: [
+        localizationsDelegates: const [
         S.delegate,
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
       supportedLocales: S.delegate.supportedLocales,
-      title: 'Default App Title',
-      routes: widget._routes,
+       routes: {
+        '/logo': (context) => const LogoPage( ),
+        '/patient-login': (context) => const VoicePatientLoginScreen(),
+        '/patient-register': (context) => const VoicePatientRegisterScreen(),
+        '/patient-select': (context) => const PatientSelectionScreen(),
+        '/caregiver-login': (context) => const CaregiverScreenLogin(),
+        '/caregiver-register': (context) => const CaregiverScreenRegister(),
+        '/reset-pass': (context) => const CaregiverResetPasswordScreen(),
+        '/caregiver-verification': (context) => const CaregiverVerificationScreen(),
+        '/caregiver-new-password': (context) => const CaregiverNewPassword(),
+        '/caregiver-map': (context) => const MapCaregiverScreen(patientId: ''),
+        '/patient-map': (context) => const MapPatientScreen(patientId: ''),
+        '/caregiver-profile': (context) => const CaregiverProfileScreen(),
+        '/patient-QrScreen': (context) => const PatientQrScreen(),
+        '/caregiver-scanner': (context) => const CaregiverScannerScreen(),
+        '/user-select': (context) => const UserPage(),
+        //'/call-screen': (context) => const CallPage(isPatient: false),
+      '/settings-caregiver':(context)=> const CaregiverSettingsScreen(),
+      '/headset-connected':(context)=>  const ConnectedHeadset(title: '',initialTab: 0,),
+      '/test-headset':(context)=>    TestScreen(blinkCount: 0,onContinue: () {},),
+      '/patient-call':(context)=>  const PatientCallPage(),
+      }
+      ,
+      navigatorKey: navigatorKey,
+      title: 'Grade Pro',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        scaffoldBackgroundColor: Color(0xffFFF9ED),
+        scaffoldBackgroundColor: const Color(0xffFFF9ED),
         appBarTheme: const AppBarTheme(
           color: Color(0xffFFF9ED),
           titleTextStyle: TextStyle(
@@ -166,9 +149,17 @@ class _LanguageSwitcherState extends State<LanguageSwitcher> {
             fontWeight: FontWeight.bold,
           ),
         ),
-        primarySwatch: Colors.blue,
+        useMaterial3: true,
       ),
-      home:  LogoPage(changeLanguage: _changeLanguage,),
+      home: const LogoPage(),
     );
   }
 }
+
+
+
+
+
+
+
+

@@ -1,0 +1,104 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isCaregiver() {
+      return isAuthenticated() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'caregiver';
+    }
+    
+    function isPatient() {
+      return isAuthenticated() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'patient';
+    }
+    
+    function isLinkedToPatient(patientId) {
+      return isCaregiver() && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.linkedPatient == patientId;
+    }
+
+    function isChatParticipant(chatId) {
+      let chat = get(/databases/$(database)/documents/chats/$(chatId)).data;
+      return request.auth.uid == chat.caregiverId || request.auth.uid == chat.patientId;
+    }
+
+    function isMessageSender(messageData) {
+      return request.auth.uid == messageData.senderId;
+    }
+
+    function isMessageReceiver(messageData) {
+      return request.auth.uid == messageData.receiverId;
+    }
+
+    // Rules for users collection
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && request.auth.uid == userId;
+      
+      // Rules for call_history subcollection
+      match /call_history/{callId} {
+        allow read, write: if isAuthenticated();
+      }
+
+      // Rules for appointments subcollection
+      match /appointments/{appointmentId} {
+        allow read: if isAuthenticated() && (
+          request.auth.uid == userId ||  // Patient can read their own appointments
+          isLinkedToPatient(userId)      // Caregiver can read their patient's appointments
+        );
+        allow create: if isCaregiver() && isLinkedToPatient(userId);
+        allow update, delete: if isCaregiver() && isLinkedToPatient(userId);
+      }
+
+      // Rules for medications subcollection
+      match /medications/{medicationId} {
+        allow read: if isAuthenticated() && (
+          request.auth.uid == userId ||  // Patient can read their own medications
+          isLinkedToPatient(userId)      // Caregiver can read their patient's medications
+        );
+        allow create: if isCaregiver() && isLinkedToPatient(userId);
+        allow update, delete: if isCaregiver() && isLinkedToPatient(userId);
+      }
+    }
+
+    // Rules for chats collection
+    match /chats/{chatId} {
+      // Allow read if authenticated, regardless of whether the document exists yet
+      allow read: if isAuthenticated();
+
+      allow create: if isAuthenticated() && (
+        (isCaregiver() && request.resource.data.patientId == request.resource.data.patientId) ||
+        (isPatient() && resource.data.caregiverId == request.resource.data.caregiverId)
+      );
+      allow update: if isAuthenticated() && (
+        resource.data.caregiverId == request.auth.uid ||
+        resource.data.patientId == request.auth.uid
+      );
+      allow delete: if isAuthenticated() && (
+        resource.data.caregiverId == request.auth.uid ||
+        resource.data.patientId == request.auth.uid
+      );
+
+      // Rules for messages subcollection
+      match /messages/{messageId} {
+        // Directly check parent chat document's caregiverId and patientId
+        allow read: if isAuthenticated() && (
+          get(/databases/$(database)/documents/chats/$(chatId)).data.caregiverId == request.auth.uid ||
+          get(/databases/$(database)/documents/chats/$(chatId)).data.patientId == request.auth.uid
+        );
+        allow create: if isChatParticipant(chatId) && (
+          (isCaregiver() && request.resource.data.senderType == 'SenderType.caregiver') ||
+          (isPatient() && request.resource.data.senderType == 'SenderType.patient')
+        );
+        allow update: if isChatParticipant(chatId) && isMessageSender(resource.data);
+        allow delete: if isChatParticipant(chatId) && isMessageSender(resource.data);
+      }
+    }
+  }
+} 

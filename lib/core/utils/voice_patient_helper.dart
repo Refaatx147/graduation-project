@@ -1,3 +1,5 @@
+// ignore_for_file: avoid_print
+
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart' show FlutterTts;
 import 'package:speech_to_text/speech_to_text.dart' as stt;
@@ -28,7 +30,7 @@ class VoiceHelper {
 
     String recognizedWords = "";
 
-    Future.delayed(Duration(seconds: 2)).then((value) {
+    Future.delayed(const Duration(seconds: 2)).then((value) {
       _speech.listen(
         pauseFor: const Duration(seconds: 9),
         listenFor: const Duration(seconds: 9),
@@ -44,7 +46,7 @@ class VoiceHelper {
   }
 
   Future<void> stopListening() async {
-    if (RouteSettings().name != '/homePatient') {
+    if (const RouteSettings().name != '/homePatient') {
       await _speech.stop();
       await _tts.stop();
     }

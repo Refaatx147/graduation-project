@@ -1,3 +1,5 @@
+// ignore_for_file: avoid_print
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:latlong2/latlong.dart';
@@ -47,12 +49,16 @@ class LocationService {
 
   Future<void> _updateLocationInFirestore(Position position) async {
     final userId = _auth.currentUser?.uid;
-    if (userId == null) return;
+    FirebaseFirestore firestore = FirebaseFirestore.instance;
+    final data = await firestore.collection('users').doc(userId).get();
 
-    await _firestore.collection('users').doc(userId).update({
+    final linkedPatientId = data.data()?['linkedPatient'] as String?;
+    if (linkedPatientId != null) {
+      await _firestore.collection('users').doc(linkedPatientId).update({
       'location': GeoPoint(position.latitude, position.longitude),
       'lastLocationUpdate': FieldValue.serverTimestamp(),
     });
+    }
   }
 
   Future<void> stopLocationUpdates() async {
@@ -80,7 +86,8 @@ class LocationService {
       }
 
       return await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+        
+       locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
       );
     } catch (e) {
       print('Error getting current location: $e');
@@ -94,26 +101,32 @@ class LocationService {
         .doc(patientId)
         .snapshots()
         .map((doc) {
-          if (!doc.exists) {
-            print('Patient document does not exist: $patientId');
-            return null;
-          }
+          if (!doc.exists) return null;
           
           final location = doc.data()?['location'] as GeoPoint?;
-          if (location == null) {
-            print('Patient location not found in document: $patientId');
-            return null;
-          }
+          if (location == null) return null;
           
+          print('New patient location received: ${location.latitude}, ${location.longitude}');
           return LatLng(location.latitude, location.longitude);
+        })
+        .handleError((error) {
+          print('Error in patient location stream: $error');
+          return null;
         });
   }
 
-  Future<void> setDestinationForPatient(String patientId, LatLng destination) async {
-    await _firestore.collection('users').doc(patientId).update({
-      'destination': GeoPoint(destination.latitude, destination.longitude),
-      'destinationSetAt': FieldValue.serverTimestamp(),
-    });
+  Future<void> setDestinationForPatient(String caregiverId, LatLng destination) async {
+     final userId = _auth.currentUser?.uid;
+    FirebaseFirestore firestore = FirebaseFirestore.instance;
+    final data = await firestore.collection('users').doc(userId).get();
+
+    final linkedPatientId = data.data()?['linkedPatient'] as String?;
+    if (linkedPatientId != null) {
+      await _firestore.collection('users').doc(linkedPatientId).update({
+        'destination': GeoPoint(destination.latitude, destination.longitude),
+        'destinationSetAt': FieldValue.serverTimestamp(),
+      });
+    }
   }
 
   Future<void> clearDestinationForPatient(String patientId) async {
@@ -122,4 +135,4 @@ class LocationService {
       'destinationSetAt': FieldValue.delete(),
     });
   }
-} 
+}
