@@ -14,7 +14,7 @@ class MapCubit extends Cubit<MapState> {
   StreamSubscription? _locationSubscription;
   StreamSubscription? _destinationSubscription;
   Timer? _arrowTimer;
-  bool _isClosed = false; // Add this flag
+  bool _isClosed = false;
 
   MapCubit({
     required this.userId,
@@ -22,6 +22,10 @@ class MapCubit extends Cubit<MapState> {
     LocationService? locationService,
   })  : _locationService = locationService ?? LocationService(),
         super(const MapInitial()) {
+    if (userId.isEmpty) {
+      emit(const MapError(error: 'Invalid user ID'));
+      return;
+    }
     _initialize();
     _startArrowRotation();
   }
@@ -36,8 +40,12 @@ class MapCubit extends Cubit<MapState> {
           .doc(userId)
           .get();
 
+      if (!userData.exists) {
+        emit(const MapError(error: 'User not found'));
+        return;
+      }
+
       final patientName = userData.data()?['name'] as String?;
-        await _startLocationUpdates();
 
       if (isPatient) {
         // For patients, start location updates and get initial location
@@ -52,31 +60,63 @@ class MapCubit extends Cubit<MapState> {
           lastLocationUpdate: DateTime.now(),
         ));
       } else {
-        
-        // For caregivers, only listen to patient location
-        await _listenToPatientLocation();
-        // Get initial patient location from Firestore
-        final patientData = await FirebaseFirestore.instance
+        // For caregivers, check if they are linked to a patient
+        final caregiverData = await FirebaseFirestore.instance
             .collection('users')
             .doc(userId)
             .get();
         
-        final location = patientData.data()?['location'] as GeoPoint?;
-        if (location == null) {
-          throw Exception('Patient location not available. Please ensure the patient has shared their location.');
+        if (!caregiverData.exists) {
+          emit(const MapError(error: 'Caregiver not found'));
+          return;
         }
+
+        final linkedPatientId = caregiverData.data()?['linkedPatient'];
         
-        final currentLocation = LatLng(location.latitude, location.longitude);
-        emit(MapLoaded(
-          currentLocation: currentLocation,
-          patientName: patientName,
-          lastLocationUpdate: DateTime.now(),
-        ));
+        if (linkedPatientId == null || linkedPatientId.isEmpty) {
+          // If not linked to a patient, show caregiver's own location
+          final position = await _locationService.getCurrentLocation();
+          if (position == null) {
+            throw Exception('Could not get current location. Please ensure location services are enabled.');
+          }
+          final currentLocation = LatLng(position.latitude, position.longitude);
+          emit(MapLoaded(
+            currentLocation: currentLocation,
+            patientName: 'Your Location',
+            lastLocationUpdate: DateTime.now(),
+          ));
+        } else {
+          // If linked to a patient, listen to patient's location
+          await _listenToPatientLocation();
+          // Get initial patient location from Firestore
+          final patientData = await FirebaseFirestore.instance
+              .collection('users')
+              .doc(linkedPatientId)
+              .get();
+          
+          if (!patientData.exists) {
+            emit(const MapError(error: 'Linked patient not found'));
+            return;
+          }
+
+          final location = patientData.data()?['location'] as GeoPoint?;
+          if (location == null) {
+            throw Exception('Patient location not available. Please ensure the patient has shared their location.');
+          }
+          
+          final currentLocation = LatLng(location.latitude, location.longitude);
+          emit(MapLoaded(
+            currentLocation: currentLocation,
+            patientName: patientData.data()?['name'] as String?,
+            lastLocationUpdate: DateTime.now(),
+          ));
+        }
       }
 
       // Listen for destination updates
       _listenToDestination();
     } catch (e) {
+      print('Error in _initialize: $e');
       if (e.toString().contains('permission')) {
         emit(const MapError(
           error: 'Location permission not granted',
@@ -147,10 +187,49 @@ class MapCubit extends Cubit<MapState> {
 
   Future<void> _listenToPatientLocation() async {
     try {
-      // Listen to real-time updates from Firestore
-      _locationSubscription = FirebaseFirestore.instance
+      // First check if the caregiver is linked to a patient
+      final caregiverData = await FirebaseFirestore.instance
           .collection('users')
           .doc(userId)
+          .get();
+      
+      final linkedPatientId = caregiverData.data()?['linkedPatient'];
+      
+      if (linkedPatientId == null) {
+        // If not linked to a patient, listen to caregiver's own location
+        _locationSubscription = Geolocator.getPositionStream(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.high,
+            distanceFilter: 10,
+            timeLimit: Duration(seconds: 3),
+          ),
+        ).listen((position) async {
+          if (!_isClosed) {
+            final currentLocation = LatLng(position.latitude, position.longitude);
+            if (state is MapLoaded) {
+              final currentState = state as MapLoaded;
+              emit(currentState.copyWith(
+                currentLocation: currentLocation,
+                isLocationUpdating: true,
+                lastLocationUpdate: DateTime.now(),
+              ));
+            } else {
+              emit(MapLoaded(
+                currentLocation: currentLocation,
+                patientName: 'Your Location',
+                isLocationUpdating: true,
+                lastLocationUpdate: DateTime.now(),
+              ));
+            }
+          }
+        });
+        return;
+      }
+
+      // If linked to a patient, listen to patient's location
+      _locationSubscription = FirebaseFirestore.instance
+          .collection('users')
+          .doc(linkedPatientId)
           .snapshots()
           .listen((snapshot) {
         if (!snapshot.exists) return;
@@ -160,11 +239,12 @@ class MapCubit extends Cubit<MapState> {
         
         if (location != null) {
           final currentLocation = LatLng(location.latitude, location.longitude);
-          
+          final patientName=snapshot.data()?['name'];
           if (!_isClosed) {
             if (state is MapLoaded) {
               final currentState = state as MapLoaded;
               emit(currentState.copyWith(
+                patientName: patientName,
                 currentLocation: currentLocation,
                 isLocationUpdating: true,
                 lastLocationUpdate: lastUpdate?.toDate() ?? DateTime.now(),
@@ -172,6 +252,7 @@ class MapCubit extends Cubit<MapState> {
             } else {
               emit(MapLoaded(
                 currentLocation: currentLocation,
+                patientName: snapshot.data()?['name'] as String?,
                 isLocationUpdating: true,
                 lastLocationUpdate: lastUpdate?.toDate() ?? DateTime.now(),
               ));
@@ -183,7 +264,7 @@ class MapCubit extends Cubit<MapState> {
       }, onError: (error) {
         print('Error listening to patient location: $error');
         if (!_isClosed) {
-          emit( const MapError(error: 'Failed to get patient location updates'));
+          emit(const MapError(error: 'Failed to get patient location updates'));
         }
       });
 
@@ -306,19 +387,50 @@ class MapCubit extends Cubit<MapState> {
       if (isPatient) {
         await _startLocationUpdates();
       } else {
-        await _listenToPatientLocation();
+        // For caregivers, check if they are linked to a patient
+        final caregiverData = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(userId)
+            .get();
+        
+        final linkedPatientId = caregiverData.data()?['linkedPatient'];
+        
+        if (linkedPatientId == null) {
+          // If not linked to a patient, get caregiver's own location
+          final position = await _locationService.getCurrentLocation();
+          if (position == null) {
+            throw Exception('Could not get current location. Please ensure location services are enabled.');
+          }
+          final currentLocation = LatLng(position.latitude, position.longitude);
+
+          emit(MapLoaded(
+            currentLocation: currentLocation,
+            patientName: ' Your Location',
+            lastLocationUpdate: DateTime.now(),
+          ));
+        } else {
+          // If linked to a patient, listen to patient's location
+          await _listenToPatientLocation();
+        }
       }
       
       _listenToDestination();
     } catch (e) {
       print('Error reloading data: $e');
-      emit(MapError(error: e.toString()));
+      if (e.toString().contains('permission')) {
+        emit(const MapError(
+          error: 'Location permission not granted',
+          isPermissionError: true,
+        ));
+      } else {
+        emit(MapError(error: e.toString()));
+      }
     }
   }
 
   void _startArrowRotation() {
     _arrowTimer?.cancel();
-    _arrowTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
+    _arrowTimer = Timer.periodic(const Duration(seconds: 7), (timer) {
       if (!_isClosed && state is MapLoaded) {  // Check if cubit is not closed
         final currentState = state as MapLoaded;
         final nextIndex = (currentState.activeArrowIndex + 1) % 4;

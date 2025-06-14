@@ -82,6 +82,7 @@ class _CaregiverPatientManagementState extends State<CaregiverPatientManagement>
           PatientManagementTabBar(tabController: _tabController),
           Expanded(
             child: TabBarView(
+              
               controller: _tabController,
               children: [
                 AppointmentsTab(

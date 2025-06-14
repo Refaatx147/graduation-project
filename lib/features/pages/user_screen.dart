@@ -41,15 +41,22 @@ class _UserPageState extends State<UserPage> {
     if (choice?.toLowerCase() == 'patient') {
       _isListening=true;
       Navigator.pushReplacementNamed(context, '/patient-select');
+      
     } else if (choice?.toLowerCase() == 'caregiver') {
             _isListening=true;
       Navigator.pushReplacementNamed(context, '/caregiver-login');
     } 
+   else 
+   {
+    _auth.speak("Please Invalid choice, try again");
+   }
   
- Future.delayed(const Duration(seconds: 2)).then((value) {
+ Future.delayed(const Duration(seconds: 4)).then((value) {
     restartListening();
  });
   }
+//     .patient-login  
+// 
 
  
 

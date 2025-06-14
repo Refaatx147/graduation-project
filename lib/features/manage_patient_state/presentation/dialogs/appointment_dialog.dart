@@ -268,7 +268,7 @@ class _AppointmentDialogState extends State<AppointmentDialog> {
                               const Icon(
                                 Icons.calendar_today,
                                 color: Color(0xff0D343F),
-                                size: 20,
+                                size: 18,
                               ),
                               const SizedBox(width: 8),
                               Text(
@@ -278,7 +278,7 @@ class _AppointmentDialogState extends State<AppointmentDialog> {
                                 style: GoogleFonts.poppins(
                                   textStyle: const TextStyle(
                                     color: Color(0xff0D343F),
-                                    fontSize: 14,
+                                    fontSize: 12,
                                   ),
                                 ),
                               ),
@@ -348,7 +348,7 @@ class _AppointmentDialogState extends State<AppointmentDialog> {
                               const Icon(
                                 Icons.access_time,
                                 color: Color(0xff0D343F),
-                                size: 20,
+                                size: 17,
                               ),
                               const SizedBox(width: 8),
                               Text(
@@ -358,7 +358,7 @@ class _AppointmentDialogState extends State<AppointmentDialog> {
                                 style: GoogleFonts.poppins(
                                   textStyle: const TextStyle(
                                     color: Color(0xff0D343F),
-                                    fontSize: 14,
+                                    fontSize: 11,
                                   ),
                                 ),
                               ),
@@ -407,7 +407,7 @@ class _AppointmentDialogState extends State<AppointmentDialog> {
                         'Save Appointment',
                         style: GoogleFonts.poppins(
                           textStyle: const TextStyle(
-                            fontSize: 12,
+                            fontSize: 8,
                             fontWeight: FontWeight.w400,
                           ),
                         ),

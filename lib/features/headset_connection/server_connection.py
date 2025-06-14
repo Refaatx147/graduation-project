@@ -12,7 +12,7 @@ CONFIG = '{"enableRawOutput": true, "format": "Json"}\n'
 BLINK_THRESHOLD = 50
 blink_times = []
 
-FLUTTER_IP = '192.168.1.6'  # <-- غيّر الـ IP حسب جهازك
+FLUTTER_IP = '192.168.1.147'  # <-- غيّر الـ IP حسب جهازك
 FLUTTER_PORT = 5000
 
 def send_blink_to_flutter():

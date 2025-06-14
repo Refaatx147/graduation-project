@@ -306,6 +306,8 @@ class _CaregiverCallPageState extends State<CaregiverCallPage> {
         ),
         const SizedBox(height: 16),
         _buildChatButton(),
+        const SizedBox(height: 16),
+        _buildScheduleNotificationButton(),
       ],
     );
   }
@@ -407,7 +409,7 @@ class _CaregiverCallPageState extends State<CaregiverCallPage> {
                   label,
                   style: GoogleFonts.poppins(
                     textStyle: TextStyle(
-                      fontSize: 14,
+                      fontSize: 12,
                       fontWeight: FontWeight.w500,
                       color: isVideo ? Colors.white : const Color(0xff0D343F),
                     ),
@@ -481,5 +483,220 @@ class _CaregiverCallPageState extends State<CaregiverCallPage> {
         ),
       ),
     );
+  }
+
+  Widget _buildScheduleNotificationButton() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: const Color(0xff0D343F),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withAlpha(26),
+            blurRadius: 10,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _showScheduleNotificationDialog(),
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.notifications_active,
+                  color: Color(0xff0D343F),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Schedule Notification',
+                  style: GoogleFonts.poppins(
+                    textStyle: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: Color(0xff0D343F),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showScheduleNotificationDialog() async {
+    final TextEditingController titleController = TextEditingController();
+    DateTime selectedDate = DateTime.now();
+    TimeOfDay selectedTime = TimeOfDay.now();
+
+    await showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(
+            'Schedule Notification',
+            style: GoogleFonts.poppins(
+              textStyle: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+                color: Color(0xff0D343F),
+              ),
+            ),
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: titleController,
+                  decoration: InputDecoration(
+                    labelText: 'Notification Title',
+                    labelStyle: GoogleFonts.poppins(
+                      textStyle: const TextStyle(
+                        color: Color(0xff0D343F),
+                      ),
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                ListTile(
+                  title: Text(
+                    'Select Date',
+                    style: GoogleFonts.poppins(),
+                  ),
+                  trailing: const Icon(Icons.calendar_today),
+                  onTap: () async {
+                    final DateTime? picked = await showDatePicker(
+                      context: context,
+                      initialDate: selectedDate,
+                      firstDate: DateTime.now(),
+                      lastDate: DateTime.now().add(const Duration(days: 365)),
+                    );
+                    if (picked != null) {
+                      setState(() {
+                        selectedDate = picked;
+                      });
+                    }
+                  },
+                ),
+                ListTile(
+                  title: Text(
+                    'Select Time',
+                    style: GoogleFonts.poppins(),
+                  ),
+                  trailing: const Icon(Icons.access_time),
+                  onTap: () async {
+                    final TimeOfDay? picked = await showTimePicker(
+                      context: context,
+                      initialTime: selectedTime,
+                    );
+                    if (picked != null) {
+                      setState(() {
+                        selectedTime = picked;
+                      });
+                    }
+                  },
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text(
+                'Cancel',
+                style: GoogleFonts.poppins(
+                  textStyle: const TextStyle(
+                    color: Color(0xff0D343F),
+                  ),
+                ),
+              ),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xff0D343F),
+              ),
+              onPressed: () async {
+                if (titleController.text.isNotEmpty) {
+                  final scheduledDateTime = DateTime(
+                    selectedDate.year,
+                    selectedDate.month,
+                    selectedDate.day,
+                    selectedTime.hour,
+                    selectedTime.minute,
+                  );
+                  
+                  await _scheduleNotification(
+                    title: titleController.text,
+                    scheduledTime: scheduledDateTime,
+                  );
+                  
+                  if (mounted) {
+                    Navigator.of(context).pop();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          'Notification scheduled successfully',
+                          style: GoogleFonts.poppins(),
+                        ),
+                        backgroundColor: Colors.green,
+                      ),
+                    );
+                  }
+                }
+              },
+              child: Text(
+                'Schedule',
+                style: GoogleFonts.poppins(
+                  textStyle: const TextStyle(
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _scheduleNotification({
+    required String title,
+    required DateTime scheduledTime,
+  }) async {
+    if (patientId == null) return;
+
+    try {
+      // Save the scheduled notification to Firestore
+      await FirebaseFirestore.instance
+          .collection('scheduledNotifications')
+          .add({
+            'caregiverId': currentUser!.uid,
+            'patientId': patientId,
+            'title': title,
+            'scheduledTime': scheduledTime,
+            'status': 'pending',
+            'createdAt': FieldValue.serverTimestamp(),
+          });
+    } catch (e) {
+      debugPrint('Error scheduling notification: $e');
+      rethrow;
+    }
   }
 }

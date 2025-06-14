@@ -12,10 +12,10 @@ class ConnectionPage extends StatefulWidget {
   const ConnectionPage({super.key});
 
   @override
-  _ConnectionPageState createState() => _ConnectionPageState();
+  ConnectionPageState createState() => ConnectionPageState();
 }
 
-class _ConnectionPageState extends State<ConnectionPage> {
+class ConnectionPageState extends State<ConnectionPage> {
   final RobotFunctions _robotFunctions = RobotFunctions();
   
   classic.BluetoothConnection? _connection;
@@ -24,11 +24,19 @@ class _ConnectionPageState extends State<ConnectionPage> {
   bool _isScanning = false;
   List<classic.BluetoothDevice> _devices = [];
   String _activeDirection = '';
+  bool _autoConnectAttempted = false;
+  Timer? _autoConnectTimer;
 
   @override
   void initState() {
     super.initState();
-    requestPermissions().then((_) => _startScanning());
+    // If a connection already exists in the singleton, reuse it
+    if (_robotFunctions.isConnected) {
+      _connection = _robotFunctions.currentConnection;
+      _isConnected = true;
+    } else {
+      requestPermissions().then((_) => _startScanning());
+    }
   }
 
   Future<void> requestPermissions() async {
@@ -41,6 +49,7 @@ class _ConnectionPageState extends State<ConnectionPage> {
   }
 
   Future<void> _startScanning() async {
+    if (!mounted) return;
     setState(() {
       _isScanning = true;
       _devices = [];
@@ -48,17 +57,33 @@ class _ConnectionPageState extends State<ConnectionPage> {
 
     try {
       final bondedDevices = await classic.FlutterBlueClassic().bondedDevices;
+      if (!mounted) return;
       setState(() {
         _devices = bondedDevices!;
         _isScanning = false;
       });
+
+      // Auto-connect logic: attempt once when page is shown
+      if (!_autoConnectAttempted && !_isConnected && !_isConnecting && !_robotFunctions.isConnected) {
+        _autoConnectAttempted = true;
+        final hc05 = await _findHC05();
+        if (hc05 != null) {
+          _autoConnectTimer = Timer(const Duration(seconds: 2), () {
+            if (mounted && !_isConnected && !_isConnecting) {
+              _connectToDevice(hc05);
+            }
+          });
+        }
+      }
     } catch (e) {
+      if (!mounted) return;
       print('Error scanning: $e');
       setState(() {
         _isScanning = false;
       });
     }
   }
+
 
   Future<classic.BluetoothDevice?> _findHC05() async {
   try {
@@ -76,6 +101,8 @@ class _ConnectionPageState extends State<ConnectionPage> {
 }
 
 void _connectToDevice(classic.BluetoothDevice device) async {
+  if (!mounted) return;
+  if (_isConnected) return; // already connected
   setState(() {
     _isConnecting = true;
   });
@@ -556,5 +583,33 @@ ElevatedButton(
           ),
       ),
     );
+  }
+
+  // ===== External helpers =====
+  Future<void> connectRobotExternal() async {
+    if (_isConnected || _isConnecting) return;
+    final hc05 = await _findHC05();
+    if (hc05 != null) {
+      _connectToDevice(hc05);
+    }
+  }
+
+  Future<void> disconnectRobotExternal() async {
+    if (_connection != null) {
+      await _connection!.finish();
+      _connection = null;
+    }
+    if (mounted) {
+      setState(() {
+        _isConnected = false;
+      });
+    }
+    _robotFunctions.stop();
+  }
+
+  @override
+  void dispose() {
+    _autoConnectTimer?.cancel();
+    super.dispose();
   }
 }

@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -19,14 +21,27 @@ class _MapCaregiverScreenState extends State<MapCaregiverScreen> {
   final MapController _mapController = MapController();
   bool _isMapReady = false;
 
+  final String caregiverId = FirebaseAuth.instance.currentUser?.uid ?? '';
+  String? patientName;
+
   @override
   void initState() {
     super.initState();
+    _fetchPatientName();
     _mapCubit = MapCubit(
       userId: widget.patientId,
       isPatient: false,
     );
-  _mapCubit.reloadData();
+    _mapCubit.reloadData();
+  }
+
+  Future<void> _fetchPatientName() async {
+    final doc = await FirebaseFirestore.instance.collection('users').doc(widget.patientId).get();
+    if (mounted) {
+      setState(() {
+        patientName = doc.data()?['name'] as String?;
+      });
+    }
   }
 
   @override
@@ -44,8 +59,14 @@ class _MapCaregiverScreenState extends State<MapCaregiverScreen> {
           }
         },
         builder: (context, state) {
+          if (state is MapLoaded) {
+            _isMapReady = true;
+          }
           return Scaffold(
-            body: _buildMapContent(context, state),
+            backgroundColor: const Color(0xffFFF9ED),
+            body: SafeArea(
+              child: _buildMapContent(context, state),
+            ),
           );
         },
       ),
@@ -92,7 +113,7 @@ class _MapCaregiverScreenState extends State<MapCaregiverScreen> {
             const SizedBox(height: 24),
             ElevatedButton(
               onPressed: () {
-                context.read<MapCubit>().reloadData();
+                _mapCubit.reloadData();
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xff0D343F),
@@ -231,6 +252,7 @@ class _MapCaregiverScreenState extends State<MapCaregiverScreen> {
                               width: 80,
                               height: 80,
                               child: Column(
+                                mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Container(
                                     padding: const EdgeInsets.all(8),
@@ -241,35 +263,34 @@ class _MapCaregiverScreenState extends State<MapCaregiverScreen> {
                                     child: const Icon(
                                       Icons.person_pin,
                                       color: Color(0xff0D343F),
-                                      size: 35,
+                                      size: 27,
                                     ),
                                   ),
-                                  if (state.patientName != null)
-                                    Container(
-                                      margin: const EdgeInsets.only(top: 4),
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white,
-                                        borderRadius: BorderRadius.circular(8),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: Colors.black.withAlpha(26),
-                                            blurRadius: 8,
-                                            offset: const Offset(0, 2),
-                                          ),
-                                        ],
-                                      ),
-                                      child: Text(
-                                        state.patientName!,
-                                        style: GoogleFonts.poppins(
-                                          textStyle: const TextStyle(
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.w600,
-                                            color: Color(0xff0D343F),
-                                          ),
+                                  Container(
+                                    margin: const EdgeInsets.only(top: 4),
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(8),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withAlpha(26),
+                                          blurRadius: 8,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Text(
+                                      patientName ?? 'Loading...',
+                                      style: GoogleFonts.poppins(
+                                        textStyle: const TextStyle(
+                                          fontSize: 8,
+                                          fontWeight: FontWeight.w600,
+                                          color: Color(0xff0D343F),
                                         ),
                                       ),
                                     ),
+                                  ),
                                 ],
                               ),
                             ),
@@ -305,53 +326,52 @@ class _MapCaregiverScreenState extends State<MapCaregiverScreen> {
                           ),
                       ],
                     ),
-                    if (state.isLocationUpdating)
-                      Positioned(
-                        top: 16,
-                        right: 16,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(20),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withAlpha(26),
-                                blurRadius: 8,
-                                offset: const Offset(0, 2),
+                    Positioned(
+                      top: 16,
+                      right: 16,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withAlpha(26),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                color: const Color(0xff0D343F).withAlpha(26),
+                                shape: BoxShape.circle,
                               ),
-                            ],
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(4),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xff0D343F).withAlpha(26),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(
-                                  Icons.location_on,
-                                  size: 16,
+                              child: const Icon(
+                                Icons.location_on,
+                                size: 14,
+                                color: Color(0xff0D343F),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Live location',
+                              style: GoogleFonts.poppins(
+                                textStyle: const TextStyle(
                                   color: Color(0xff0D343F),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
                                 ),
                               ),
-                              const SizedBox(width: 8),
-                              Text(
-                                'Live location',
-                                style: GoogleFonts.poppins(
-                                  textStyle: const TextStyle(
-                                    color: Color(0xff0D343F),
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
                       ),
+                    ),
                   ],
                 ),
               ),

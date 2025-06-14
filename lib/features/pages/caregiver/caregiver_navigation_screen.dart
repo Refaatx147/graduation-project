@@ -17,8 +17,7 @@ class CaregiverNavigationScreen extends StatefulWidget {
   const CaregiverNavigationScreen({super.key});
 
   @override
-  // ignore: library_private_types_in_public_api
-  _CaregiverNavigationScreenState createState() => _CaregiverNavigationScreenState();
+  State<CaregiverNavigationScreen> createState() => _CaregiverNavigationScreenState();
 }
 
 class _CaregiverNavigationScreenState extends State<CaregiverNavigationScreen> {
@@ -27,16 +26,10 @@ class _CaregiverNavigationScreenState extends State<CaregiverNavigationScreen> {
   final FirebaseFirestore firestore = FirebaseFirestore.instance;
   final String? caregiverId = FirebaseAuth.instance.currentUser?.uid;
   String? patientId;
-    bool _mounted = true; // Add this flag
+  bool _mounted = true;
 
-  // Initialize _pages with default values
-  late List<Widget> _pages = [
-    const Center(child: CircularProgressIndicator()),
-    const Center(child: CircularProgressIndicator()),
-    const Center(child: CircularProgressIndicator()),
-    const Center(child: CircularProgressIndicator()),
-    const Center(child: CircularProgressIndicator()),
-  ];
+  Widget? _currentPage;
+  late List<Widget> _pages;
 
   String get _currentTitle {
     switch (_currentPageIndex) {
@@ -75,15 +68,36 @@ class _CaregiverNavigationScreenState extends State<CaregiverNavigationScreen> {
   @override
   void initState() {
     super.initState();
+    _initializePages();
     _initializeData();
     _initializeCallService();
     _initializeFCMToken();
   }
 
+  void _initializePages() {
+    _pages = [
+      const CaregiverScannerScreen(),
+      const CaregiverCallPage(),
+      if (patientId != null) 
+        MapCaregiverScreen(patientId: patientId!)
+      else
+        const Center(
+          child: Text(
+            'No patient linked',
+            style: TextStyle(
+              color: Color(0xff0D343F),
+              fontSize: 16,
+            ),
+          ),
+        ),
+      const CaregiverPatientManagement(),
+      const CaregiverProfileScreen(),
+    ];
+    _currentPage = _pages[_currentPageIndex];
+  }
 
   Future<void> _initializeCallService() async {
     try {
-      // Get user data from Firestore
       final userData = await FirebaseFirestore.instance
           .collection('users')
           .doc(caregiverId)
@@ -91,17 +105,15 @@ class _CaregiverNavigationScreenState extends State<CaregiverNavigationScreen> {
       
       final userName = userData.data()?['name'] ?? 'Caregiver';
       
-      // Initialize call service with user data
       await CallService.initializeCallService();
     } catch (e) {
-      print('Error initializing call service: $e');
+      debugPrint('Error initializing call service: $e');
     }
   }
 
-
- Future<void> _initializeFCMToken() async {
+  Future<void> _initializeFCMToken() async {
     if (!_mounted) return;
-    await PushNotifications().getAndSaveFcmTokenToFirestore();
+    await PushNotifications.getAndSaveFcmTokenToFirestore();
   }
 
   Future<void> _initializeData() async {
@@ -113,27 +125,30 @@ class _CaregiverNavigationScreenState extends State<CaregiverNavigationScreen> {
           .doc(caregiverId)
           .get();
       
-      if (!_mounted) return; // Check again after async operation
+      if (!_mounted) return;
       
       setState(() {
         patientId = data.data()?['linkedPatient'];
-        _pages = [
-          const CaregiverScannerScreen(isInNavigation: true),
-          const CaregiverCallPage(),
-          MapCaregiverScreen(patientId: patientId ?? ''),
-          const CaregiverPatientManagement(),
-          const CaregiverProfileScreen(),
-        ];
+        _initializePages(); // Reinitialize pages after getting patientId
+        _currentPage = _pages[_currentPageIndex];
       });
     } catch (e) {
-      print('Error initializing data: $e');
+      debugPrint('Error initializing data: $e');
     }
   }
+
   @override
   void dispose() {
-    _mounted=false;
+    _mounted = false;
     CallService.disposeCallService();
     super.dispose();
+  }
+
+  void _onPageChanged(int index) {
+    setState(() {
+      _currentPageIndex = index;
+      _currentPage = _pages[index];
+    });
   }
 
   @override
@@ -147,7 +162,10 @@ class _CaregiverNavigationScreenState extends State<CaregiverNavigationScreen> {
           // Handle notifications
         },
       ),
-      body: Center(child: _pages[_currentPageIndex]),
+      body: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 300),
+        child: _currentPage ?? const Center(child: CircularProgressIndicator()),
+      ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: const Color(0xff0D343F),
@@ -205,7 +223,7 @@ class _CaregiverNavigationScreenState extends State<CaregiverNavigationScreen> {
   }) {
     final isSelected = _currentPageIndex == index;
     return InkWell(
-      onTap: () => setState(() => _currentPageIndex = index),
+      onTap: () => _onPageChanged(index),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(

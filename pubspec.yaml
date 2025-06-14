@@ -91,11 +91,10 @@ dependencies:
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: "assets/images/iconlogo.png"
-  remove_alpha_ios: true  # Add this to fix iOS alpha channel warning
-  adaptive_icon_background: "#ffffff" # Optional: Add this if you want adaptive icons on Android
-  adaptive_icon_foreground: "assets/images/iconlogo.png" # Optional: Add this if you want adaptive icons on Android
-
+  image_path: "assets/images/icon.png"
+  adaptive_icon_foreground: "assets/images/icon_fore.png"
+  adaptive_icon_background: "assets/images/icon_back.png"
+  remove_alpha_ios: true
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
 # The following section is specific to Flutter packages.

@@ -1,5 +1,3 @@
-
-
 // ignore_for_file: empty_catches
 
 import 'dart:convert';
@@ -18,140 +16,249 @@ class PushNotifications {
   static final FlutterLocalNotificationsPlugin _localNotifications = 
       FlutterLocalNotificationsPlugin();
 static Future<void> initialize() async {
-    // Request permissions
-    await _messaging.requestPermission(
-      alert: true,
-      badge: true,
-      sound: true,
-      criticalAlert: true,
-    );
+    try {
+      // Request permissions
+      final settings = await _messaging.requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
+        criticalAlert: true,
+        provisional: false,
+        announcement: true,
+        carPlay: true,
+      );
 
-    // Initialize local notifications
-    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
-    const initSettings = InitializationSettings(android: androidSettings);
-    await _localNotifications.initialize(
-      initSettings,
-      onDidReceiveNotificationResponse: (details) {
-        // Handle notification tap
-      },
-    );
+      debugPrint('User granted permission: ${settings.authorizationStatus}');
 
-    // Create notification channel
-    await _createNotificationChannel();
+      // Get initial token
+      final token = await _messaging.getToken();
+      debugPrint('FCM Token: $token');
 
+      // Initialize local notifications
+      const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+      const initSettings = InitializationSettings(android: androidSettings);
+      
+      await _localNotifications.initialize(
+        initSettings,
+        onDidReceiveNotificationResponse: (details) {
+          debugPrint('Notification tapped: ${details.payload}');
+          // Handle notification tap based on type
+          if (details.payload != null) {
+            final data = jsonDecode(details.payload!);
+            if (data['type'] == 'scheduled_reminder') {
+              // Handle scheduled reminder tap
+              debugPrint('Scheduled reminder tapped: ${data['notificationId']}');
+            }
+          }
+        },
+      );
 
-    // Set up foreground notification handlers
-    FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
-    FirebaseMessaging.onMessageOpenedApp.listen(_handleMessageOpenedApp);
+      // Create notification channel with all settings
+      await _createNotificationChannel();
+
+      // Set up foreground notification handlers
+      FirebaseMessaging.onMessage.listen((message) {
+        debugPrint('Got a message whilst in the foreground!');
+        debugPrint('Message data: ${message.data}');
+        _handleForegroundMessage(message);
+      });
+
+      FirebaseMessaging.onMessageOpenedApp.listen((message) {
+        debugPrint('Message opened app: ${message.data}');
+        _handleMessageOpenedApp(message);
+      });
+
+      // Handle background messages
+      FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
+    } catch (e, stackTrace) {
+      debugPrint('Error initializing push notifications: $e');
+      debugPrint('Stack trace: $stackTrace');
+    }
+  }
+
+  static Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+    debugPrint('Handling a background message: ${message.messageId}');
+    // Add your background message handling logic here
   }
 
   static Future<String> getAccessToken() async {
-    // This method should return the access token for push notifications.
-    // Implement your logic to retrieve the access token here.
-final serviceAccountJson = 
-{
+    try {
+      // Service account details
+      const serviceAccount ={
+ 
+};
 
-  "type": "service_account",
-  "project_id": "grade-pro-firebase",
-  "private_key_id": "72f5d45557a8e7b857e51e3127253c9a46062cd7",
-  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC14QG6AETI09n+\neVr7QLYRTcIdCSMuY5rUKg7dJG7QCXh44Vjw5820gsak1k9QSE9qvvuiFqTe/cyQ\neVbsxGVN6UjSlZfPjEtvYszZoix0CRt8OHJ3zYwg/I2MU3xukYZmz8CBfUN1HNA3\neCDR9EO4WLZejgfbuDYIWMQVPhyuK902CMEaUUzajQn7SVFhiMScKPFAuq5+XRnm\ngJIXPPZkNffhXCGm/BjKzJYhADqJyhHfUYVzX9MYXKHii+Nzv670t0FncxHbFuU1\n08ixVhrgNTr+6cxRZVNhBkrlfrYVSYJTtGCJc87mZ+h1gw8g/aCu1JzCYWoaMy+O\nxD9ORo8VAgMBAAECggEAD45yzNt4BqtkImlz2Di1Oe6qMzyUV0PqusnsIosatU2S\nEdjIeDaDeDSVVAUGnKnKrSkvsbH5IR+ZLyRJxI+Z0JurAGQOK5Dm5NyRA+5kmfor\ncSkM1WVt3mZrnvyHEJf+5G1RnGG/8tTnlE8Ak6SuZCamVpkUX/02Femtv9ljr5vo\nbyBGZKnx+NBPMDyFKp2wrVwVqDwys33wwJcXx+kcsmETbI0Sa+S3wrftL602bZGR\nYnjLBgdVT9jw8sbt4zxTtJazXEdlC8humm51rDbE17kuDeaUGhqQyrLBKyOldtfl\nZz6pS6xW5Or2mNyVjZS3qgs2/xrWXhBqI2t7koS0MwKBgQD+6pX4VzEQXbUvcXel\nYKFulTBCkWMCHQrE141RSJVhjSDNM6qgrRQrZMKm8WaBU2wM7s9hmVlOVh1HgjCy\nwaxgOjToSpo7EeYX1M0lGaXekLm+jIU8SFcK3j8DvoFymDcwem3eBmDu9SUWzmMa\nng9or4echgNwD8D+n0OziKeIHwKBgQC2pvACSSCeRuUNUhfBjaP7qwEKAlpwdARL\nfT+7hVZUoRyerEz2vIUXdootrgp5/jeFqC7FTR505zpoP/tvzaCK/kOZwjorJu2a\n2h2VSkIxSBsQtX98Ecs48sfVAaPiQkF2TzDiLJetq+VJiwej2ghacWN367jzlUSs\nHRMfVHCSSwKBgG8xjodMKTe1WHJAcWsu8lvVMb7nwiNK3catK5R4L8jkkZlQ3y3F\nMZYYFpxRkl/5LpmZldZB2OXFxHHLxUhEGNfErA1jdVEs5owgo/d575Nc19jZXMjF\n2UoBVcVhVP/Si8hWrxP4/lFdl3cSQcJ7jcchQesxvdAk3w9yE0r94e4LAoGAYGLH\n1OzyIZQX22eu0Z0FJBGhgr6rKxyOB6gYscQzQoWirLkQBESHl1IeqOxm6umUMxwF\nUmjX4akD0W+yJ9XDGpYC5mjweUUZrdXcNqPxOkBqx+5/T+Gz9GFpwqYS7Zs5IE25\n5iDSCfvkC2MqrPSp49BiRS5Hc4MZshnFtYrBvPECgYEAtjF5I5F0C4UJ/Qd3of6R\n730bF+9h04hwlpmyfstTttpURAtVMXtbLOnbsP/M931WNlt83AlcW5YXtgR7jL9O\nTfXU2Yw1BOLjvoDtCXM/wL2dup9dUdjw4tLb0KNj1UOwARoxQ5jLNOgUTdqw8NIF\nc0hY4Zx8Mhz++AVr4y7M6bc=\n-----END PRIVATE KEY-----\n",
-  "client_email": "think-step-grade-project@grade-pro-firebase.iam.gserviceaccount.com",
-  "client_id": "102152365004696023211",
-  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-  "token_uri": "https://oauth2.googleapis.com/token",
-  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/think-step-grade-project%40grade-pro-firebase.iam.gserviceaccount.com",
-  "universe_domain": "googleapis.com"
 
-} ;
+      debugPrint('Initializing service account credentials...');
+      
+      final credentials = auth.ServiceAccountCredentials.fromJson(serviceAccount);
+      
+      debugPrint('Creating HTTP client...');
+      final client = await auth.clientViaServiceAccount(
+        credentials,
+        ['https://www.googleapis.com/auth/firebase.messaging']
+      );
+      
+      debugPrint('Getting access token...');
+      final accessToken = client.credentials.accessToken.data;
+      client.close();
+      
+      debugPrint('Successfully obtained access token');
+      return accessToken;
+    } catch (e, stackTrace) {
+      debugPrint('Error getting access token: $e');
+      debugPrint('Stack trace: $stackTrace');
+      throw Exception('Failed to obtain access token: $e');
+    }
+  }
 
-List<String> scopes = [
-  'https://www.googleapis.com/auth/userinfo.email',
-  'https://www.googleapis.com/auth/firebase.database',
-        'https://www.googleapis.com/auth/firebase.messaging',
-    ];
-
-   http.Client client = await auth.clientViaServiceAccount(
-     auth.ServiceAccountCredentials.fromJson(serviceAccountJson),
-     scopes,
-   );
-
-   // get access token
-   auth.AccessCredentials credentials = await auth.obtainAccessCredentialsViaServiceAccount(
-      auth.ServiceAccountCredentials.fromJson(serviceAccountJson),
-      scopes,
-    client,  
-   );
-
-client.close();
-   return credentials.accessToken.data;
-}
   static Future<void> _createNotificationChannel() async {
     if (Platform.isAndroid) {
+      const channel = AndroidNotificationChannel(
+        'emergency_alerts',
+        'Emergency Alerts',
+        description: 'High priority emergency alerts',
+        importance: Importance.max,
+        playSound: true,
+        enableVibration: true,
+        showBadge: true,
+        sound: RawResourceAndroidNotificationSound('notification'),
+        enableLights: true,
+        ledColor: Color(0xff0D343F),
+      );
+
       await _localNotifications
           .resolvePlatformSpecificImplementation<
               AndroidFlutterLocalNotificationsPlugin>()
-          ?.createNotificationChannel(
-        const AndroidNotificationChannel(
-          'emergency_alerts',
-          'Emergency Alerts',
-          description: 'High priority emergency alerts',
-          importance: Importance.max,
-          playSound: true,
-          enableVibration: true,
-          showBadge: true,
-          sound: RawResourceAndroidNotificationSound('notification')
-        ),
-      );
+          ?.createNotificationChannel(channel);
     }
   }
 
  
 
-Future<void> getAndSaveFcmTokenToFirestore() async {
+static Future<String?> getAndSaveFcmTokenToFirestore() async {
   try {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) {
+      debugPrint('No authenticated user found');
+      return null;
+    }
+
     String? token = await FirebaseMessaging.instance.getToken();
+    debugPrint('Retrieved FCM token: $token');
 
-    if (token != null) {
-      String uid = FirebaseAuth.instance.currentUser!.uid;
+    if (token == null || token.isEmpty) {
+      debugPrint('Failed to get FCM token');
+      return null;
+    }
 
+    // Validate token format
+    if (!token.contains(':')) {
+      debugPrint('Invalid FCM token format');
+      return null;
+    }
+
+    // Save token to Firestore
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .set({
+          'fcmToken': token,
+          'lastTokenUpdate': FieldValue.serverTimestamp(),
+          'platform': Platform.operatingSystem,
+          'platformVersion': Platform.operatingSystemVersion,
+        }, SetOptions(merge: true));
+
+    debugPrint('FCM token saved to Firestore');
+
+    // Set up token refresh listener
+    FirebaseMessaging.instance.onTokenRefresh.listen((newToken) async {
+      debugPrint('FCM token refreshed: $newToken');
       await FirebaseFirestore.instance
           .collection('users')
           .doc(uid)
-          .set({
-            'fcmToken': token,
+          .update({
+            'fcmToken': newToken,
             'lastTokenUpdate': FieldValue.serverTimestamp(),
-          }, SetOptions(merge: true)); 
+          });
+    });
 
-    }
-  } catch (e) {
+    return token;
+  } catch (e, stackTrace) {
+    debugPrint('Error saving FCM token: $e');
+    debugPrint('Stack trace: $stackTrace');
+    return null;
   }
 }
 
+static Future<String?> getFcmTokenFromFirestore(String uid) async {
+  try {
+    final doc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .get();
+
+    if (!doc.exists) {
+      debugPrint('User document not found');
+      return null;
+    }
+
+    final token = doc.data()?['fcmToken'] as String?;
+    if (token == null || token.isEmpty) {
+      debugPrint('FCM token not found in user document');
+      return null;
+    }
+
+    // Check token age
+    final lastUpdate = doc.data()?['lastTokenUpdate'] as Timestamp?;
+    if (lastUpdate != null) {
+      final age = DateTime.now().difference(lastUpdate.toDate());
+      if (age.inDays > 7) {  // Token is older than 7 days
+        debugPrint('FCM token is too old, requesting new token');
+        return await getAndSaveFcmTokenToFirestore();
+      }
+    }
+
+    return token;
+  } catch (e) {
+    debugPrint('Error getting FCM token from Firestore: $e');
+    return null;
+  }
+}
 
   static Future<void> _handleForegroundMessage(RemoteMessage message) async {
+    debugPrint('Handling foreground message with data: ${message.data}');
+    debugPrint('Notification content: ${message.notification?.title} - ${message.notification?.body}');
     
     // Show local notification
     if (message.notification != null) {
-      await _localNotifications.show(
-        message.hashCode,
-        message.notification!.title,
-        message.notification!.body,
-        const NotificationDetails(
-          android:  AndroidNotificationDetails(
-            'emergency_alerts',
-            'Emergency Alerts',
-            channelDescription: 'High priority emergency alerts',
-            importance: Importance.max,
-            priority: Priority.high,
-            showWhen: true,
-            playSound: true,
-            sound: RawResourceAndroidNotificationSound('notification'),
-            enableVibration: true
+      try {
+        await _localNotifications.show(
+          message.hashCode,
+          message.notification!.title,
+          message.notification!.body,
+          const NotificationDetails(
+            android: const AndroidNotificationDetails(
+              'emergency_alerts',
+              'Emergency Alerts',
+              channelDescription: 'High priority emergency alerts',
+              importance: Importance.max,
+              priority: Priority.high,
+              showWhen: true,
+              playSound: true,
+              sound: const RawResourceAndroidNotificationSound('notification'),
+              enableVibration: true,
+              visibility: NotificationVisibility.public,
+              category: AndroidNotificationCategory.alarm,
+            ),
           ),
-        ),
-        payload: jsonEncode(message.data),
-      );
+          payload: jsonEncode(message.data),
+        );
+        debugPrint('Local notification displayed successfully');
+      } catch (e) {
+        debugPrint('Error showing local notification: $e');
+      }
     }
   }
 
@@ -163,113 +270,141 @@ Future<void> getAndSaveFcmTokenToFirestore() async {
   
   
   
-  static Future<bool> sendHelpNotificationsToCaregiver(
-  String caregiverId, 
-  BuildContext context,
-) async {
-  try {
-    // First get current patient info
-    final patient = FirebaseAuth.instance.currentUser;
-    if (patient == null) {
+  static Future<bool> sendNotification({
+    required String receiverId,
+    required String title,
+    required String body,
+    required Map<String, dynamic> data,
+    BuildContext? context,
+  }) async {
+    try {
+      // Get receiver's token
+      final receiverDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(receiverId)
+          .get();
+
+      if (!receiverDoc.exists) {
+        debugPrint('Receiver document does not exist');
+        return false;
+      }
+
+      final receiverToken = receiverDoc.data()?['fcmToken'] as String?;
+      if (receiverToken == null || receiverToken.isEmpty) {
+        debugPrint('Receiver FCM token is null or empty');
+        return false;
+      }
+
+      // Validate token format (basic check)
+      if (!receiverToken.contains(':')) {
+        debugPrint('Invalid FCM token format');
+        return false;
+      }
+
+      try {
+        final String accessToken = await getAccessToken();
+        const String endpoint = 'https://fcm.googleapis.com/v1/projects/grade-pro-firebase/messages:send';
+        
+        final response = await http.post(
+          Uri.parse(endpoint),
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $accessToken',
+          },
+          body: jsonEncode({
+            "message": {
+              "token": receiverToken,
+              "notification": {
+                "title": title,
+                "body": body,
+              },
+              "data": {
+                ...data,
+                "click_action": "FLUTTER_NOTIFICATION_CLICK",
+                "timestamp": DateTime.now().toIso8601String(),
+              },
+              "android": {         
+                "priority": "high",
+                "notification": {
+                  "channel_id": "emergency_alerts",
+                  "default_sound": false,
+                  "default_vibrate_timings": true,
+                  "visibility": "public",
+                  "sound": "notification"
+                }
+              }
+            }
+          }),
+        );
+
+        debugPrint('FCM Response Status: ${response.statusCode}');
+        debugPrint('FCM Response Body: ${response.body}');
+
+        if (response.statusCode == 200) {
+          // Create notification record in Firestore
+          await FirebaseFirestore.instance.collection('notifications').add({
+            'type': 'helpRequest',
+            'senderId': FirebaseAuth.instance.currentUser!.uid,
+            'receiverId': receiverId,
+            'timestamp': FieldValue.serverTimestamp(),
+            'status': 'sent',
+            'title': title,
+            'body': body,
+            'data': data,
+          });
+          
+          return true;
+        } else {
+          if (response.body.contains('UNREGISTERED') || 
+              response.body.contains('INVALID_ARGUMENT') ||
+              response.body.contains('NOT_FOUND')) {
+            debugPrint('Invalid or expired FCM token, removing from database');
+            await FirebaseFirestore.instance
+                .collection('users')
+                .doc(receiverId)
+                .update({
+                  'fcmToken': FieldValue.delete(),
+                });
+          }
+          return false;
+        }
+      } catch (e) {
+        debugPrint('Error sending FCM notification: $e');
+        return false;
+      }
+    } catch (e) {
+      debugPrint('Error in sendNotification: $e');
       return false;
     }
+  }
 
-    // Get patient details
+  // Keep the original emergency help function for backward compatibility
+  static Future<bool> sendHelpNotificationsToCaregiver(
+    String caregiverId, 
+    BuildContext context,
+  ) async {
+    final patient = FirebaseAuth.instance.currentUser;
+    if (patient == null) return false;
+
+    // Ensure patient token is up-to-date
+    await getAndSaveFcmTokenToFirestore();
+
     final patientDoc = await FirebaseFirestore.instance
         .collection('users')
         .doc(patient.uid)
         .get();
 
-  
-
-    // Get caregiver's token
-    final caregiverDoc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(caregiverId)
-        .get();
-
-    final caregiverToken = caregiverDoc.data()?['fcmToken'] as String?;
-    if (caregiverToken == null) {
-      return false;
-    }
-
     final patientName = patientDoc.data()?['name'] ?? 'Your patient';
 
-
-    final String accessToken = await getAccessToken();
-    const String endpoint = 'https://fcm.googleapis.com/v1/projects/grade-pro-firebase/messages:send';
-    
-    final response = await http.post(
-      Uri.parse(endpoint),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $accessToken',
+    return sendNotification(
+      receiverId: caregiverId,
+      title: "Emergency Alert",
+      body: "$patientName needs your immediate assistance!",
+      data: {   
+        "type": "helpRequest",
+        "patientId": patient.uid,
+        "patientName": patientName,
       },
-      body: jsonEncode({
-        "message": {
-          "token": caregiverToken,
-          "notification": {
-            "title": "Emergency Alert",
-            "body": "$patientName needs your immediate assistance!",
-
-          },
-          "data": {
-            "type": "emergency",
-            "click_action": "FLUTTER_NOTIFICATION_CLICK",
-            "timestamp": DateTime.now().toIso8601String(),
-            "patientId": patient.uid,
-            "patientName": patientName,
-          },
-          "android": {         
-            "priority": "high",
-            "notification": {
-              "channel_id": "emergency_alerts",
-              "default_sound": false,
-              "default_vibrate_timings": true,
-              "visibility": "public",
-              "sound":"notification"
-            }
-          }
-        }
-      }),
     );
-
-    if (response.statusCode == 200) {
-      
-      // Create notification record in Firestore
-      await FirebaseFirestore.instance.collection('notifications').add({
-        'type': 'helpRequest',
-        'senderId': patient.uid,
-        'receiverId': caregiverId,
-        'timestamp': FieldValue.serverTimestamp(),
-        'status': 'sent',
-      });
-      
-      return true;
-    } else {
-      
-      if (response.body.contains('UNREGISTERED')) {
-        // Only try to update if patient is linked to caregiver
-        if (caregiverId !='') {
-          try {
-            await FirebaseFirestore.instance
-                .collection('users')
-                .doc(caregiverId)
-                .update({
-                  'fcmToken': FieldValue.delete(),
-                });
-          } catch (e) {
-          }
-        }
-      }
-      return false;
-    }
-
-  } catch (e) {
-    return false;
   }
-}
-
-// Update setupTokenRefresh method
-
 }

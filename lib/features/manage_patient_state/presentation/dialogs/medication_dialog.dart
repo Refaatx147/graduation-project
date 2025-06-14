@@ -360,7 +360,7 @@ class _MedicationDialogState extends State<MedicationDialog> {
                         'Save Medication',
                         style: GoogleFonts.poppins(
                           textStyle: const TextStyle(
-                            fontSize: 13,
+                            fontSize: 10,
                             fontWeight: FontWeight.w400,
                           ),
                         ),

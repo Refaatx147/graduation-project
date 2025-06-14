@@ -11,11 +11,23 @@ class PatientManagementTabBar extends StatelessWidget {
     required this.tabController,
   }) : super(key: key);
 
+  double _responsiveFontSize(BuildContext context, double baseSize) {
+    return MediaQuery.of(context).size.width * (baseSize / 450.0); // Base on Samsung A52 width
+  }
+
+  double _responsiveIconSize(BuildContext context) {
+    return MediaQuery.of(context).size.width * 0.045;
+  }
+
+  double _responsivePadding(BuildContext context, double baseSize) {
+    return MediaQuery.of(context).size.width * (baseSize / 360.0);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 56,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      height: MediaQuery.of(context).size.height * 0.07, // 7% of screen height
+      padding: EdgeInsets.symmetric(horizontal: _responsivePadding(context, 16)),
       decoration: BoxDecoration(
         border: Border(
           bottom: BorderSide(
@@ -27,40 +39,36 @@ class PatientManagementTabBar extends StatelessWidget {
       child: TabBar(
         automaticIndicatorColorAdjustment: true,
         enableFeedback: true,
-        overlayColor: WidgetStateProperty.all(Colors.transparent),
+        overlayColor: MaterialStateProperty.all(Colors.transparent),
         controller: tabController,
         labelColor: const Color(0xff0D343F),
         unselectedLabelColor: Colors.grey,
         indicatorColor: const Color(0xff0D343F),
         indicatorWeight: 4,
         indicatorSize: TabBarIndicatorSize.label,
-        indicatorAnimation: TabIndicatorAnimation.elastic,
         labelStyle: GoogleFonts.poppins(
-          textStyle: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-          ),
+          fontSize: _responsiveFontSize(context, 14),
+          fontWeight: FontWeight.w600,
         ),
         unselectedLabelStyle: GoogleFonts.poppins(
-          textStyle: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-          ),
+          fontSize: _responsiveFontSize(context, 14),
+          fontWeight: FontWeight.w500,
         ),
         tabs: [
           Tab(
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.event_note, size: 20),
-                const SizedBox(width: 8),
+                Icon(
+                  Icons.event_note,
+                  size: _responsiveIconSize(context),
+                ),
+                SizedBox(width: _responsivePadding(context, 8)),
                 Text(
                   'Appointments',
                   style: GoogleFonts.poppins(
-                    textStyle: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                    ),
+                    fontSize: _responsiveFontSize(context, 15),
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ],
@@ -70,15 +78,16 @@ class PatientManagementTabBar extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.medication, size: 20),
-                const SizedBox(width: 8),
+                Icon(
+                  Icons.medication,
+                  size: _responsiveIconSize(context),
+                ),
+                SizedBox(width: _responsivePadding(context, 8)),
                 Text(
                   'Medications',
                   style: GoogleFonts.poppins(
-                    textStyle: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                    ),
+                    fontSize: _responsiveFontSize(context, 15),
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ],

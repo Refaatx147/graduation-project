@@ -19,6 +19,8 @@ class RobotFunctions {
 
   bool get isConnected => _connection != null;
 
+  classic.BluetoothConnection? get currentConnection => _connection;
+
   void moveForward() {
     if (isConnected) _connection?.output.add(Uint8List.fromList(utf8.encode('forward\n')));
   }

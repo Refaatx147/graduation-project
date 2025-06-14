@@ -17,6 +17,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:grade_pro/features/blocs/navigation_cubit/navigation_cubit.dart';
 import 'package:grade_pro/features/widgets/patient_navigation_bar.dart';
 import 'package:grade_pro/features/headset_connection/connected_headset.dart';
+import 'package:grade_pro/features/headset_connection/connected_headset.dart' as headset;
+import 'package:grade_pro/features/chat/presentation/pages/patient_chat_screen.dart';
 
 class PatientNavigationScreen extends StatefulWidget {
   final UserAuthService authService;
@@ -41,6 +43,11 @@ class _PatientNavigationScreenState extends State<PatientNavigationScreen> {
   final String _lastWords = '';
 
   int _selectedTab = 0;
+  final GlobalKey<headset.ConnectedHeadsetState> _headsetKey = GlobalKey<headset.ConnectedHeadsetState>();
+  PatientChatScreen? _chatScreen;
+  bool _isInChatScreen = false;
+  final GlobalKey<PatientChatScreenState> _chatKey = GlobalKey<PatientChatScreenState>();
+
  void _updateDeviceTab(int newTab) {
     setState(() {
       _selectedTab = newTab;
@@ -52,7 +59,7 @@ class _PatientNavigationScreenState extends State<PatientNavigationScreen> {
     _navigationCubit = BlocProvider.of<NavigationCubit>(context);
     _startContinuousListening();
     _navigationCubit.navigateToIndex(0);
-    PushNotifications().getAndSaveFcmTokenToFirestore();
+    PushNotifications.getAndSaveFcmTokenToFirestore();
   }
 
   void _startContinuousListening() async {
@@ -64,7 +71,7 @@ class _PatientNavigationScreenState extends State<PatientNavigationScreen> {
 
   void _listenForCommands() async {
     while (_isListening) {
-      final command = await _voiceHelper.listen();
+      final command = await  _voiceHelper.listen();
       if (command != null && command.isNotEmpty) {
         _processVoiceCommand(command);
       }
@@ -126,8 +133,87 @@ class _PatientNavigationScreenState extends State<PatientNavigationScreen> {
     final lowerCommand = command.toLowerCase();
     int? targetIndex;
     String? screenName;
-    // Navigate to Medications or Appointments
-    if (lowerCommand.contains('medicine') || lowerCommand.contains('medications')) {
+
+    if (lowerCommand.contains('connection lost with the headset') ||
+        lowerCommand.contains("can't connect to the headset")) {
+      return;
+    }
+
+    // Handle chat-specific commands when in chat screen
+    if (_isInChatScreen && _chatKey.currentState != null) {
+      if (lowerCommand.contains('record') || lowerCommand.contains('start recording')) {
+        await _voiceHelper.speak('Starting voice recording');
+        _chatKey.currentState?.startRecording();
+        _showNavigationFeedback('Starting voice recording', false);
+        return;
+      } else if (lowerCommand.contains('send') || lowerCommand.contains('stop recording')) {
+        await _voiceHelper.speak('Sending voice message');
+        _chatKey.currentState?.stopRecording();
+        _showNavigationFeedback('Sending voice message', false);
+        return;
+      }
+    }
+
+    // Handle navigation to chat
+    if (lowerCommand.contains('chat') || lowerCommand.contains('message')) {
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser == null) {
+        _showNavigationFeedback('Not authenticated', true);
+        return;
+      }
+
+      try {
+        final patientDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(currentUser.uid)
+            .get();
+
+        final linkedCaregivers = patientDoc.data()?['linkedCaregivers'] as List<dynamic>?;
+        if (linkedCaregivers == null || linkedCaregivers.isEmpty) {
+          _showNavigationFeedback('No caregiver linked', true);
+          return;
+        }
+
+        // Get caregiver name
+        final caregiverDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(linkedCaregivers[0].toString())
+            .get();
+        
+        final caregiverName = caregiverDoc.data()?['name'] ?? 'Caregiver';
+
+        setState(() {
+          _isInChatScreen = true;
+          _chatScreen = PatientChatScreen(
+            key: _chatKey,
+            caregiverId: linkedCaregivers[0].toString(),
+            caregiverName: caregiverName,
+          );
+        });
+
+        await _voiceHelper.speak('Opening chat with ${caregiverName}');
+        
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => _chatScreen!,
+          ),
+        );
+
+        setState(() {
+          _isInChatScreen = false;
+          _chatScreen = null;
+        });
+
+        return;
+      } catch (e) {
+        debugPrint('Error opening chat: $e');
+        _showNavigationFeedback('Error opening chat', true);
+        return;
+      }
+    }
+
+    else if (lowerCommand.contains('medicine') || lowerCommand.contains('medications')) {
       Navigator.of(context).push(
         MaterialPageRoute(
           builder: (context) => const PatientMedicationsScreen(),
@@ -166,22 +252,50 @@ class _PatientNavigationScreenState extends State<PatientNavigationScreen> {
      else if (lowerCommand.contains('headset') || lowerCommand.contains('device')) {
       targetIndex = 4;
       screenName = 'headset';
-_updateDeviceTab(0);
+      _updateDeviceTab(0);
 
-print(_selectedTab);
+      print(_selectedTab);
 
-  } 
-    else if (lowerCommand.contains('robot') || lowerCommand.contains('chair')) {
+    } 
+    else if (lowerCommand.contains('robot') || lowerCommand.contains('connect robot')) {
       targetIndex = 4;
       screenName = 'robot';
-_updateDeviceTab  (1);
-print(_selectedTab);
+      _updateDeviceTab  (1);
+      print(_selectedTab);
 
-  }
- // Replace the empty emergency condition with this implementation:
-else if (command.toLowerCase().contains('help') || 
-        command.toLowerCase().contains('emergency')) {
- {
+    }
+    else if (lowerCommand.contains('start server')) {
+      targetIndex = 4;
+      _updateDeviceTab(0);
+      screenName = 'Headset';
+      Future.microtask(() {
+        _headsetKey.currentState?.startServerExternal();
+      });
+    } else if (lowerCommand.contains('stop server')) {
+      targetIndex = 4;
+      _updateDeviceTab(0);
+      screenName = 'Headset';
+      Future.microtask(() {
+        _headsetKey.currentState?.stopServerExternal();
+      });
+    } else if (lowerCommand.contains('start test')) {
+      targetIndex = 4;
+      _updateDeviceTab(0);
+      screenName = 'Headset';
+      Future.microtask(() {
+        _headsetKey.currentState?.startTestExternal();
+      });
+    } else if (lowerCommand.contains('stop test')) {
+      targetIndex = 4;
+      _updateDeviceTab(0);
+      screenName = 'Headset';
+      Future.microtask(() {
+        _headsetKey.currentState?.stopTestExternal();
+      });
+    }
+    else if (command.toLowerCase().contains('help') || 
+            command.toLowerCase().contains('emergency')) {
+    {
       try {
         final currentUser = FirebaseAuth.instance.currentUser;
         if (currentUser == null) {
@@ -233,6 +347,21 @@ else if (command.toLowerCase().contains('help') ||
       _handleLogout();
       return;
     }
+   else if ((lowerCommand.contains('disconnect') || lowerCommand.contains('disconnect robot')) ) {
+      targetIndex = 4;
+      _updateDeviceTab(1);
+      screenName = 'Robot';
+      _isListening = false;
+      await _voiceHelper.stopListening();
+      Future.microtask(() {
+        _headsetKey.currentState?.disconnectRobotExternal();
+      });
+      Future.delayed(const Duration(seconds: 2), () {
+        if (!_isListening) {
+          _startContinuousListening();
+        }
+      });
+    }
     // Handle navigation if a valid target was found
     if (targetIndex != null ) {
       final currentIndex = context.read<NavigationCubit>().state.currentIndex;
@@ -244,6 +373,9 @@ else if (command.toLowerCase().contains('help') ||
     // else {
     //   _showNavigationFeedback('Command not recognized. Please try again.', true);
     // }
+
+    // Ignore system TTS phrases that might be captured by the mic
+    
   }
 
   void _handleRobotDirection(String direction) {
@@ -326,12 +458,12 @@ else if (command.toLowerCase().contains('help') ||
               const PatientQrScreen(),
               MapPatientScreen(patientId: FirebaseAuth.instance.currentUser?.uid ?? ''),
               const PatientCallPage(),
-  ConnectedHeadset(
-                title: _selectedTab == 0 ? 'Headset Connection' : 'Chair Connection', 
-                initialTab: _selectedTab
-                
+              ConnectedHeadset(
+                key: _headsetKey,
+                title: _selectedTab == 0 ? 'Headset Connection' : 'Chair Connection',
+                initialTab: _selectedTab,
               ),
-                          ],
+            ],
           ),
           bottomNavigationBar: PatientNavigationBar(
             currentIndex: state.currentIndex,

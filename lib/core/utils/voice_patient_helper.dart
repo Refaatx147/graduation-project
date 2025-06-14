@@ -24,6 +24,8 @@ class VoiceHelper {
     bool available = await _speech.initialize(
       onStatus: (val) => print('Speech Status: $val'),
       onError: (val) => print('Speech Error: $val'),
+     // for await to listen
+      finalTimeout: const Duration(seconds: 10),  
     );
 
     if (!available) return null;
@@ -32,6 +34,7 @@ class VoiceHelper {
 
     Future.delayed(const Duration(seconds: 2)).then((value) {
       _speech.listen(
+
         pauseFor: const Duration(seconds: 9),
         listenFor: const Duration(seconds: 9),
         onResult: (val) {
@@ -41,7 +44,8 @@ class VoiceHelper {
         },
       );
     });
-    await Future.delayed(const Duration(seconds: 7));
+    // duration 7 seconds
+    await Future.delayed(const Duration(seconds: 8));
     return recognizedWords.toLowerCase().trim();
   }
 

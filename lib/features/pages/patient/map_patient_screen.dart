@@ -6,6 +6,9 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:grade_pro/features/blocs/map_cubit/map_cubit.dart';
 import 'package:grade_pro/features/blocs/map_cubit/map_state.dart';
+import 'package:grade_pro/core/utils/blink_event_bus.dart';
+import 'package:grade_pro/features/pages/patient/command_control.dart';
+import 'dart:async';
 
 class MapPatientScreen extends StatefulWidget {
   final String patientId;
@@ -24,12 +27,51 @@ mapCubit.reloadData();
 }
 
 class _MapPatientScreenState extends State<MapPatientScreen> {
+  late final StreamSubscription _blinkSub;
+  final RobotFunctions _robot = RobotFunctions();
+  bool _blinkControlEnabled = false;
+  MapCubit? _mapCubit;
+
+  @override
+  void initState() {
+    super.initState();
+    _blinkSub = BlinkEventBus().stream.listen((_) => _handleBlink());
+  }
+
+  void _handleBlink() {
+    if (!_blinkControlEnabled) return;
+    final current = _mapCubit?.state;
+    if (current is MapLoaded) {
+      switch (current.activeArrowIndex) {
+        case 0:
+          _robot.moveForward();
+          break;
+        case 1:
+          _robot.turnRight();
+          break;
+        case 2:
+          _robot.moveBackward();
+          break;
+        case 3:
+          _robot.turnLeft();
+          break;
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _blinkSub.cancel();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (context) => MapCubit(userId: widget.patientId, isPatient: true),
       child: BlocBuilder<MapCubit, MapState>(
         builder: (context, state) {
+          _mapCubit ??= context.read<MapCubit>();
           return Scaffold(
             backgroundColor: const Color(0xffFFF9ED),
             appBar: AppBar(
@@ -157,6 +199,23 @@ class _MapPatientScreenState extends State<MapPatientScreen> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      // Toggle Control Button
+                      ElevatedButton(
+                        onPressed: () {
+                          setState(() {
+                            _blinkControlEnabled = !_blinkControlEnabled;
+                          });
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _blinkControlEnabled ? const Color.fromARGB(255, 199, 52, 52) : const Color.fromARGB(255, 52, 199, 114),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                        child: Text(
+                          _blinkControlEnabled ? 'Stop' : 'Start',
+                          style: const TextStyle(color: Colors.white, fontSize: 12),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
                       // Forward Button
                       ElevatedButton(
                         onPressed: () {

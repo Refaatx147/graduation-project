@@ -4,6 +4,7 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../domain/models/chat_message.dart';
+import 'package:grade_pro/features/chat/data/services/chat_notification_service.dart';
 
 class ChatRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -93,6 +94,9 @@ class ChatRepository {
         .collection('messages')
         .doc(message.id)
         .set(message.toMap());
+
+    // Send notification
+    await ChatNotificationService.sendMessageNotification(message);
   }
 
   Stream<List<ChatMessage>> getMessages(String otherUserId) {
@@ -176,6 +180,8 @@ class ChatRepository {
         .collection('messages')
         .doc(messageId)
         .update({'isRead': true});
+
+    await ChatNotificationService.markMessageAsRead(messageId);
   }
 
   String _getChatId(String userId1, String userId2) {

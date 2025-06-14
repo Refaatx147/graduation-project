@@ -30,6 +30,7 @@ class UserAuthService {
 
   Future<String?> listen() async {
     bool available = await _speech.initialize(
+      finalTimeout: const Duration(seconds: 10),
       onStatus: (val) => print('Speech Status: $val'),
       onError: (val) => print('Speech Error: $val'),
     );

@@ -23,6 +23,12 @@ service cloud.firestore {
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.linkedPatient == patientId;
     }
 
+    function isCaregiverLinkedToPatient(patientId) {
+      return isPatient() &&
+        exists(/databases/$(database)/documents/users/$(patientId)) &&
+        get(/databases/$(database)/documents/users/$(patientId)).data.linkedCaregivers.hasAny([request.auth.uid]);
+    }
+
     function isChatParticipant(chatId) {
       let chat = get(/databases/$(database)/documents/chats/$(chatId)).data;
       return request.auth.uid == chat.caregiverId || request.auth.uid == chat.patientId;
@@ -35,12 +41,62 @@ service cloud.firestore {
     function isMessageReceiver(messageData) {
       return request.auth.uid == messageData.receiverId;
     }
+    
+    match /notifications/{notificationId} {
+      allow create: if isAuthenticated() && (
+        // Patient creating emergency notification
+        (isPatient() && request.resource.data.type == 'helpRequest' &&
+         request.resource.data.senderId == request.auth.uid) ||
+        // Caregiver responding to patient
+        (isCaregiver() && isLinkedToPatient(request.resource.data.receiverId))
+      );
+      
+      allow read: if isAuthenticated() && (
+        resource.data.senderId == request.auth.uid ||
+        resource.data.receiverId == request.auth.uid
+      );
+      
+      allow update: if isAuthenticated() && (
+        resource.data.receiverId == request.auth.uid ||
+        resource.data.senderId == request.auth.uid
+      );
+    }
 
     // Rules for users collection
     match /users/{userId} {
       allow read: if isAuthenticated();
-      allow write: if isAuthenticated() && request.auth.uid == userId;
       
+      // Allow users to create their own document
+      allow create: if isAuthenticated() && request.auth.uid == userId;
+      
+      // Allow users to update their own document
+      allow update: if isAuthenticated() && (
+        // User updating their own document
+        (request.auth.uid == userId) ||
+        
+        // Caregiver linking to patient
+        (isCaregiver() && 
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['linkedPatient']) &&
+         request.resource.data.linkedPatient is string &&
+         exists(/databases/$(database)/documents/users/$(request.resource.data.linkedPatient)) &&
+         get(/databases/$(database)/documents/users/$(request.resource.data.linkedPatient)).data.role == 'patient') ||
+        
+        // Patient accepting caregiver link
+        (isPatient() && 
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['linkedCaregivers']) &&
+         request.resource.data.linkedCaregivers is list &&
+         request.resource.data.linkedCaregivers.hasAll([request.auth.uid])) ||
+        
+        // FCM token updates
+        (request.auth.uid == userId &&
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['fcmToken', 'lastTokenUpdate'])) ||
+        
+        // Location updates for patients
+        (request.auth.uid == userId &&
+         isPatient() &&
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['location', 'lastLocationUpdate']))
+      );
+
       // Rules for call_history subcollection
       match /call_history/{callId} {
         allow read, write: if isAuthenticated();
@@ -69,17 +125,18 @@ service cloud.firestore {
 
     // Rules for chats collection
     match /chats/{chatId} {
-      // Allow read if authenticated, regardless of whether the document exists yet
       allow read: if isAuthenticated();
-
+      
       allow create: if isAuthenticated() && (
         (isCaregiver() && request.resource.data.patientId == request.resource.data.patientId) ||
         (isPatient() && resource.data.caregiverId == request.resource.data.caregiverId)
       );
+      
       allow update: if isAuthenticated() && (
         resource.data.caregiverId == request.auth.uid ||
         resource.data.patientId == request.auth.uid
       );
+      
       allow delete: if isAuthenticated() && (
         resource.data.caregiverId == request.auth.uid ||
         resource.data.patientId == request.auth.uid
@@ -87,18 +144,32 @@ service cloud.firestore {
 
       // Rules for messages subcollection
       match /messages/{messageId} {
-        // Directly check parent chat document's caregiverId and patientId
         allow read: if isAuthenticated() && (
           get(/databases/$(database)/documents/chats/$(chatId)).data.caregiverId == request.auth.uid ||
           get(/databases/$(database)/documents/chats/$(chatId)).data.patientId == request.auth.uid
         );
+        
         allow create: if isChatParticipant(chatId) && (
           (isCaregiver() && request.resource.data.senderType == 'SenderType.caregiver') ||
           (isPatient() && request.resource.data.senderType == 'SenderType.patient')
         );
+        
         allow update: if isChatParticipant(chatId) && isMessageSender(resource.data);
         allow delete: if isChatParticipant(chatId) && isMessageSender(resource.data);
       }
+    }
+
+    match /scheduledNotifications/{notificationId} {
+      allow create: if request.auth != null 
+        && request.resource.data.caregiverId == request.auth.uid;
+      allow read, update: if request.auth != null 
+        && (resource.data.caregiverId == request.auth.uid 
+        || resource.data.patientId == request.auth.uid);
+    }
+
+    // Keep existing rules
+    match /{document=**} {
+      allow read, write: if request.auth != null;
     }
   }
 } 

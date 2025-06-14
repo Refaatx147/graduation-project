@@ -10,6 +10,7 @@ import 'package:path_provider/path_provider.dart';
 import '../../data/repositories/chat_repository.dart';
 import '../../domain/models/chat_message.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'dart:async';
 
 class PatientChatScreen extends StatefulWidget {
   final String caregiverId;
@@ -22,10 +23,10 @@ class PatientChatScreen extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  State<PatientChatScreen> createState() => _PatientChatScreenState();
+  PatientChatScreenState createState() => PatientChatScreenState();
 }
 
-class _PatientChatScreenState extends State<PatientChatScreen> {
+class PatientChatScreenState extends State<PatientChatScreen> {
   final ChatRepository _chatRepository = ChatRepository();
   final CloudinaryService _cloudinaryService = CloudinaryService();
   final _audioRecorder = AudioRecorder();
@@ -33,12 +34,49 @@ class _PatientChatScreenState extends State<PatientChatScreen> {
   bool _isRecording = false;
   String? _recordingPath;
   bool _isPlaying = false;
+  Timer? _recordingTimer;
+  int _remainingSeconds = 10;
 
   @override
   void dispose() {
     _audioRecorder.dispose();
     _audioPlayer.dispose();
+    _recordingTimer?.cancel();
     super.dispose();
+  }
+
+  // Expose these methods for voice control
+  void startRecording() async {
+    if (!_isRecording) {
+      setState(() {
+        _remainingSeconds = 10;
+      });
+      await _startRecording();
+      // Start 10-second timer with UI updates
+      _recordingTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+        if (_remainingSeconds > 0) {
+          setState(() {
+            _remainingSeconds--;
+          });
+        }
+        if (_remainingSeconds == 0) {
+          timer.cancel();
+          if (_isRecording) {
+            stopRecording();
+          }
+        }
+      });
+    }
+  }
+
+  void stopRecording() async {
+    if (_isRecording) {
+      _recordingTimer?.cancel();
+      setState(() {
+        _remainingSeconds = 10;
+      });
+      await _stopRecording();
+    }
   }
 
   Future<void> _startRecording() async {
@@ -62,31 +100,46 @@ class _PatientChatScreenState extends State<PatientChatScreen> {
       }
     } catch (e) {
       print('Error starting recording: $e');
+      setState(() {
+        _isRecording = false;
+      });
+      _recordingTimer?.cancel();
     }
   }
 
   Future<void> _stopRecording() async {
+    if (!_isRecording) return;
+    
     try {
+      _recordingTimer?.cancel();
       final path = await _audioRecorder.stop();
       setState(() {
         _isRecording = false;
       });
 
       if (path != null) {
+        print('Recording stopped, uploading file from path: $path');
         final audioUrl = await _cloudinaryService.uploadAudio(
           File(path),
           FirebaseAuth.instance.currentUser?.uid ?? '',
         );
 
+        print('Audio uploaded, URL: $audioUrl');
         await _chatRepository.sendMessage(
           senderType: SenderType.patient,
           receiverId: widget.caregiverId,
           messageType: MessageType.audio,
           audioUrl: audioUrl,
         );
+        print('Message sent successfully');
+      } else {
+        print('No recording path available after stopping');
       }
     } catch (e) {
       print('Error stopping recording: $e');
+      setState(() {
+        _isRecording = false;
+      });
     }
   }
 
@@ -279,24 +332,41 @@ class _PatientChatScreenState extends State<PatientChatScreen> {
           ),
         ],
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            width: 60,
-            height: 60,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: _isRecording ? Colors.red : const Color(0xff0D343F),
-            ),
-            child: IconButton(
-              icon: Icon(
-                _isRecording ? Icons.stop : Icons.mic,
-                color: Colors.white,
-                size: 30,
+          if (_isRecording)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Text(
+                'Recording stops in $_remainingSeconds seconds',
+                style: GoogleFonts.poppins(
+                  color: Colors.red,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
-              onPressed: _isRecording ? _stopRecording : _startRecording,
             ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 60,
+                height: 60,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: _isRecording ? Colors.red : const Color(0xff0D343F),
+                ),
+                child: IconButton(
+                  icon: Icon(
+                    _isRecording ? Icons.stop : Icons.mic,
+                    color: Colors.white,
+                    size: 30,
+                  ),
+                  onPressed: _isRecording ? stopRecording : startRecording,
+                ),
+              ),
+            ],
           ),
         ],
       ),

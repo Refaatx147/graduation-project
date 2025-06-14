@@ -54,15 +54,26 @@ class _CaregiverProfileScreenState extends State<CaregiverProfileScreen> {
             _localCaregiverImagePath = userData.data()?['caregiverImagePath'];
             
             if (_localPatientImagePath != null) {
-              _patientImageFile = File(_localPatientImagePath!);
+              final patientFile = File(_localPatientImagePath!);
+              if (patientFile.existsSync()) {
+                _patientImageFile = patientFile;
+              } else {
+                _localPatientImagePath = null;
+              }
             }
             if (_localCaregiverImagePath != null) {
-              _caregiverImageFile = File(_localCaregiverImagePath!);
+              final caregiverFile = File(_localCaregiverImagePath!);
+              if (caregiverFile.existsSync()) {
+                _caregiverImageFile = caregiverFile;
+              } else {
+                _localCaregiverImagePath = null;
+              }
             }
           });
         }
       }
     } catch (e) {
+      debugPrint('Error loading profile data: $e');
       _showSnackBar('Error loading profile data');
     } finally {
       setState(() => _isLoading = false);
@@ -388,19 +399,41 @@ class _CaregiverProfileScreenState extends State<CaregiverProfileScreen> {
                 ],
               ),
               child: ClipOval(
-                child: imageFile != null
-                    ? Image.file(
-                        imageFile,
-                        fit: BoxFit.cover,
-                        width: 100,
-                        height: 100,
-                      )
-                    : Image.asset(
-                        'assets/images/barcelona.png',
-                        fit: BoxFit.cover,
-                        width: 100,
-                        height: 100,
-                      ),
+                child: Builder(
+                  builder: (context) {
+                    if (imageFile != null && imageFile.existsSync()) {
+                      try {
+                        return Image.file(
+                          imageFile,
+                          fit: BoxFit.cover,
+                          width: 100,
+                          height: 100,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Image.asset(
+                              'assets/images/barcelona.png',
+                              fit: BoxFit.cover,
+                              width: 100,
+                              height: 100,
+                            );
+                          },
+                        );
+                      } catch (e) {
+                        return Image.asset(
+                          'assets/images/barcelona.png',
+                          fit: BoxFit.cover,
+                          width: 100,
+                          height: 100,
+                        );
+                      }
+                    }
+                    return Image.asset(
+                      'assets/images/barcelona.png',
+                      fit: BoxFit.cover,
+                      width: 100,
+                      height: 100,
+                    );
+                  },
+                ),
               ),
             ),
           ),
